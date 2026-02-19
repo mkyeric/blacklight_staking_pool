@@ -20,6 +20,7 @@ contracts/out/
 contracts/lib/
 contracts/lcov.info
 contracts/coverage/
+contracts/broadcast/
 
 # ──────────────────── UI (Next.js) ────────────────────────────
 ui/node_modules/
