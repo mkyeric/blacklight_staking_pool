@@ -1,0 +1,41 @@
+# ───────────────────────────── OS ──────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ──────────────────────────── IDE ─────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ─────────────────────── Environment ──────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+
+# ─────────────────── Contracts (Foundry) ──────────────────────
+contracts/cache/
+contracts/out/
+contracts/lib/
+contracts/lcov.info
+contracts/coverage/
+
+# ──────────────────── UI (Next.js) ────────────────────────────
+ui/node_modules/
+ui/.next/
+ui/out/
+ui/build/
+ui/dist/
+ui/.pnp/
+ui/.pnp.js
+ui/next-env.d.ts
+ui/*.tsbuildinfo
+ui/.vercel
+ui/coverage/
+ui/npm-debug.log*
+ui/yarn-debug.log*
+ui/yarn-error.log*
+
+# ──────────────────── Node (general) ──────────────────────────
+node_modules/

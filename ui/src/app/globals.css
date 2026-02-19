@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------
+   Blacklight-inspired base styles
+   --------------------------------------------------------------- */
+
+@layer base {
+  html {
+    @apply bg-blacklight-bg text-blacklight-text antialiased;
+  }
+
+  body {
+    @apply min-h-screen font-sans;
+  }
+
+  /* Subtle radial glow behind the page — similar to blacklight.nillion.com */
+  body::before {
+    content: "";
+    @apply pointer-events-none fixed inset-0 -z-10;
+    background: radial-gradient(
+      ellipse 60% 50% at 50% 0%,
+      rgba(124, 92, 252, 0.08) 0%,
+      transparent 70%
+    );
+  }
+}
+
+@layer components {
+  /* Glass-style card used across the app */
+  .card {
+    @apply rounded-2xl border border-blacklight-border bg-blacklight-card/60
+           backdrop-blur-sm transition-colors hover:border-blacklight-border-hover;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl
+           bg-blacklight-accent px-6 py-3 text-sm font-semibold text-white
+           transition-all hover:bg-blacklight-accent-hover
+           disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  /* Secondary / outline button */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl
+           border border-blacklight-border bg-transparent px-6 py-3
+           text-sm font-semibold text-blacklight-text transition-all
+           hover:border-blacklight-accent hover:text-blacklight-accent
+           disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  /* Text input */
+  .input {
+    @apply w-full rounded-xl border border-blacklight-border bg-blacklight-surface
+           px-4 py-3 text-blacklight-text placeholder:text-blacklight-text-muted
+           outline-none transition-colors focus:border-blacklight-accent;
+  }
+
+  /* Stat label/value pair */
+  .stat-label {
+    @apply text-xs uppercase tracking-wider text-blacklight-text-muted;
+  }
+  .stat-value {
+    @apply text-lg font-semibold text-blacklight-text;
+  }
+}
