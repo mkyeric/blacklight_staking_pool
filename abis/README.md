@@ -17,7 +17,7 @@ ABI files for contracts on the Nillion Blacklight L2. Staking involves the **NIL
 ## StakingOperators.json
 
 **Address:** `0x89c1312Cedb0B0F67e4913D2076bd4a860652B69`  
-**Role:** Staking-to-node contract. Holds staked NIL and assigns it to **operators** (Blacklight node addresses). Only an **approved staker** per operator can call `stakeTo` for that operator.
+**Role:** Staking-to-node contract. Holds staked NIL and assigns it to **operators** (Blacklight node addresses). Only an **approved staker** per operator can call `stakeTo` / `requestUnstake` / `withdrawUnstaked` for that operator.
 
 **Key functions for a pool:**
 
@@ -35,11 +35,9 @@ ABI files for contracts on the Nillion Blacklight L2. Staking involves the **NIL
 
 - Each operator has at most one **approved staker** address that may call `stakeTo` / `requestUnstake` / `withdrawUnstaked` for that operator.
 - **Operator** (node wallet) must call `approveStaker(staker)` to set who can stake to them. For a pool, the operator calls `approveStaker(yourPoolContractAddress)` so that only your pool can stake NIL to that node.
-- View current binding: `approvedStaker(operator)` → returns the staker address; `operatorStaker(operator)` is the reverse (operator for a given staker in some implementations — check ABI).
-
-**Operator registration (node operator):**
-
-- Node operator calls `registerOperator(metadataURI)` once to register as an operator, then `approveStaker(poolAddress)` so the pool can stake to them.
+- View current binding:
+  - `approvedStaker(operator)` → current approved staker (can be cleared on first `stakeTo`).
+  - `operatorStaker(operator)` → the bound staker for that operator (set on first `stakeTo`, persists afterwards).
 
 - [Blockscout](https://explorer-blacklight-x9da3b5afc.t.conduit.xyz/address/0x89c1312Cedb0B0F67e4913D2076bd4a860652B69)
 
@@ -48,16 +46,15 @@ ABI files for contracts on the Nillion Blacklight L2. Staking involves the **NIL
 ## RewardPolicy.json
 
 **Address:** `0x78E0FEBF3B8936f961729328a25dBA88d4Fea86B`  
-**Role:** Reward policy contract. Streams NIL rewards to the **approved staker** (e.g. your pool) for verifier work. The pool calls `claim()` to pull claimable rewards into the contract.
+**Role:** Reward policy contract. Streams NIL rewards to the **approved staker** (e.g. your pool) for verifier work. The pool (as recipient) calls `claim()` to pull claimable rewards into the pool contract.
 
 **Key functions for a pool:**
 
 | Function | Who calls | Purpose |
 |----------|------------|--------|
 | `claim()` | Pool (or authorized caller) | Transfer currently claimable NIL rewards to the caller (the pool). |
-| `rewardToken()` | Anyone (view) | Returns the NIL token address; use to verify the reward token matches the pool’s NIL. |
-| `rewards(account)` | Anyone (view) | Pending reward balance for an account (if applicable). |
-| `withdrawableBalance()` | Anyone (view) | Amount available to withdraw/claim. |
+| `rewardToken()` | Anyone (view) | Returns the NIL token (ERC‑20) used for rewards; verify it matches the pool’s NIL. |
+| `rewards(account)` | Anyone (view) | Pending reward balance for a given recipient. |
 
 - [Blockscout](https://explorer-blacklight-x9da3b5afc.t.conduit.xyz/address/0x78E0FEBF3B8936f961729328a25dBA88d4Fea86B)
 
@@ -67,6 +64,6 @@ ABI files for contracts on the Nillion Blacklight L2. Staking involves the **NIL
 
 1. **NIL token contract** — Holds all NIL balances and enforces ERC-20 (approve/transferFrom). Any move of NIL goes through this contract.
 2. **Staking contract** — Holds the *rules* for staking (who can stake to which operator, unbonding delay, slashing, snapshots). It uses the NIL token: when you call `stakeTo`, the staking contract pulls NIL from the caller; staked NIL sits in the staking contract until withdrawn via `withdrawUnstaked`.
-3. **Reward policy contract** — Holds and streams NIL rewards for verifier work. The pool (as approved staker) calls `claim()` to pull rewards into the pool for settlement and distribution to stakers.
+3. **Reward policy contract** — Holds and streams NIL rewards for verifier work. The pool (as recipient/approved staker) calls `claim()` to pull rewards into the pool for settlement and distribution to stakers.
 
-Your pool uses all three: **NIL** for user↔pool flows, **Staking** for pool↔node flows, **RewardPolicy** for claiming verifier rewards.
+Your pool uses all three: **NIL** for user↔pool flows, **StakingOperators** for pool↔node flows, **RewardPolicy** for claiming verifier rewards.
