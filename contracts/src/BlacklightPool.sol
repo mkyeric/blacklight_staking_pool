@@ -669,26 +669,32 @@ contract BlacklightPool is ReentrancyGuard {
     ///         accrue on the full staked amount until the batch is processed. In Idle phase use
     ///         withdrawProcessingStake() instead. Disabled when staked = 0.
     ///         Remaining free staked after this request must be 0 or >= minStakePerUser; withdrawing all is allowed.
-    /// @param amount  NIL to withdraw (must be ≤ staked minus existing pending; must respect 70k pool floor
-    ///         after activation, except in ShuttingDown where 70k floor is bypassed).
+    ///         Availability checks only consider not-yet-batched requests (unlockTimestamp == 0), because
+    ///         batched requests were already deducted from staked in processWithdrawalBatch().
+    /// @param amount  NIL to withdraw (must be ≤ staked minus existing pending; owner must keep
+    ///         effective stake ≥ 70k in Active phase, except in ShuttingDown where this floor is bypassed).
     function requestWithdraw(uint256 amount) external nonReentrant {
         if (amount == 0) revert ZeroAmount();
         if (poolPhase == PoolPhase.Idle) revert IdlePhaseUseWithdrawProcessingStake();
 
         StakerInfo storage info = stakers[msg.sender];
-        uint256 pendingSum = _getPendingWithdrawalSum(msg.sender);
-        if (amount > info.staked || pendingSum + amount > info.staked) revert InsufficientStake();
+        uint256 pendingUnprocessed = _getUnprocessedPendingWithdrawalSum(msg.sender);
+        if (amount > info.staked || pendingUnprocessed + amount > info.staked) revert InsufficientStake();
 
-        // Remaining "free" staked after this request = staked - pendingSum - amount; must be 0 or >= min.
-        uint256 remaining = info.staked - pendingSum - amount;
+        // Remaining "free" staked after this request = staked - unprocessedPending - amount; must be 0 or >= min.
+        uint256 remaining = info.staked - pendingUnprocessed - amount;
         if (remaining > 0 && remaining < minStakePerUser) revert BelowMinimumStake();
 
         // Active or ShuttingDown: queue withdrawals. In ShuttingDown, 70k floor is bypassed.
         if (poolPhase != PoolPhase.Active && poolPhase != PoolPhase.ShuttingDown) revert OperatorNotInitialized();
 
-        // In Active (not ShuttingDown): enforce pool-level 70k floor (at-node after all pending leaves).
+        // In Active (not ShuttingDown): enforce owner-only 70k floor on effective stake
+        // (processing + staked - pending, after applying this request).
         if (poolPhase == PoolPhase.Active) {
-            if (totalStakedAtNode - totalPendingWithdrawals < MIN_OPERATOR_STAKE + amount) revert OperatorStakeTooLow();
+            if (msg.sender == owner) {
+                uint256 ownerEffectiveAfter = info.processingStake + info.staked - pendingUnprocessed - amount;
+                if (ownerEffectiveAfter < MIN_OPERATOR_STAKE) revert OperatorStakeTooLow();
+            }
         }
 
         // Enforce max concurrent (unclaimed) withdrawal requests per staker
@@ -853,6 +859,19 @@ contract BlacklightPool is ReentrancyGuard {
         return sum;
     }
 
+    /// @dev Sum of not-yet-batched pending request amounts for a user (unlockTimestamp == 0).
+    ///      These are the only requests that still reserve current staked balance.
+    function _getUnprocessedPendingWithdrawalSum(address user) internal view returns (uint256) {
+        WithdrawalRequest[] storage q = withdrawalQueue[user];
+        uint256 sum;
+        uint256 len = q.length;
+        for (uint256 i; i < len;) {
+            if (q[i].unlockTimestamp == 0 && !q[i].claimed && !q[i].cancelled) sum += q[i].amount;
+            unchecked { i++; }
+        }
+        return sum;
+    }
+
     /// @dev Gather up to maxEntries unprocessed requests; return total amount and (user, index) pairs.
     function _gatherUnprocessedRequests(uint256 maxEntries)
         internal
@@ -939,6 +958,12 @@ contract BlacklightPool is ReentrancyGuard {
     ///         Use in UI to show "Processing unstake: XXX NIL". Staked is not reduced until processWithdrawalBatch.
     function getPendingWithdrawalSum(address user) external view returns (uint256) {
         return _getPendingWithdrawalSum(user);
+    }
+
+    /// @notice Sum of a staker's pending withdrawal request amounts that are not yet batched
+    ///         (unlockTimestamp == 0). Use this for "available for new request" calculations.
+    function getUnprocessedPendingWithdrawalSum(address user) external view returns (uint256) {
+        return _getUnprocessedPendingWithdrawalSum(user);
     }
 
     /// @notice Total number of withdrawal requests not yet included in a batch (unlockTimestamp == 0).

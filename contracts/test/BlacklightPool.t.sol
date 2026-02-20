@@ -778,6 +778,29 @@ contract BlacklightPoolTest is Test {
         assertEq(pool.getPendingWithdrawalSum(owner), 20_000 * 1e6);
     }
 
+    function test_requestWithdraw_ownerRevertsBelow70k_evenIfPoolTotalStaysAbove70k() public {
+        _initOperatorForPool();
+
+        // Add a large non-owner stake so pool total remains far above 70k.
+        uint256 aliceAmount = 100_000 * 1e6;
+        nil.mint(alice, aliceAmount);
+        vm.startPrank(alice);
+        nil.approve(address(pool), aliceAmount);
+        pool.stake(aliceAmount);
+        vm.stopPrank();
+
+        // Move alice's processing stake to at-node stake.
+        vm.prank(owner);
+        pool.forwardStakeToNode();
+
+        // Pool total is high (190k), but owner still has 90k.
+        // Owner trying to withdraw 21k would leave owner at 69k and must revert.
+        vm.startPrank(owner);
+        vm.expectRevert(BlacklightPool.OperatorStakeTooLow.selector);
+        pool.requestWithdraw(21_000 * 1e6);
+        vm.stopPrank();
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     //  WITHDRAWAL — cancelPendingWithdrawal
     // ═══════════════════════════════════════════════════════════════════
@@ -911,6 +934,37 @@ contract BlacklightPoolTest is Test {
         assertEq(_atNode, aliceStake - 2_000 * 1e6, "staked unchanged after second request");
         assertEq(pool.totalStakedAtNode(), staking.stakeOf(pool.operator()), "totalStakedAtNode = node until second batch");
         assertEq(pool.getPendingWithdrawalSum(alice), 2_000 * 1e6 + 1_001 * 1e6, "processing unstake = all unclaimed pending (2k + 1001)");
+    }
+
+    /// @notice After a request is batched, it is already deducted from staked; only unprocessed
+    ///         (unlockTimestamp == 0) requests should reserve staked for future request capacity.
+    function test_requestWithdraw_allowsNewRequestAfterBatchWhenHistoricalPendingExceedsCurrentStaked() public {
+        _initOperatorForPool();
+        uint256 aliceStake = 5_000 * 1e6;
+        nil.mint(alice, aliceStake);
+        vm.startPrank(alice);
+        nil.approve(address(pool), aliceStake);
+        pool.stake(aliceStake);
+        vm.stopPrank();
+
+        vm.prank(owner);
+        pool.forwardStakeToNode();
+
+        // First request gets batched, reducing staked to 1,000 while historical pending remains 4,000.
+        vm.prank(alice);
+        pool.requestWithdraw(4_000 * 1e6);
+        vm.prank(owner);
+        pool.processWithdrawalBatch(10);
+
+        (, uint256 stakedAfterBatch,,) = pool.stakers(alice);
+        assertEq(stakedAfterBatch, 1_000 * 1e6, "staked reduced after batch");
+        assertEq(pool.getPendingWithdrawalSum(alice), 4_000 * 1e6, "all unclaimed pending includes batched request");
+        assertEq(pool.getUnprocessedPendingWithdrawalSum(alice), 0, "no unprocessed requests after batch");
+
+        // New request should be validated against current staked and unprocessed pending (0), not all historical pending.
+        vm.prank(alice);
+        pool.requestWithdraw(500 * 1e6);
+        assertEq(pool.getUnprocessedPendingWithdrawalSum(alice), 500 * 1e6, "new unprocessed pending recorded");
     }
 
     // ═══════════════════════════════════════════════════════════════════

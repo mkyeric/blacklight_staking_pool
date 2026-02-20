@@ -215,6 +215,7 @@ export function CreatePoolWizard() {
     functionName: "owner",
     query: { enabled: !!effectivePoolAddress },
   });
+  const effectivePoolOwner = (poolOwnerFromContract as `0x${string}` | undefined) ?? undefined;
 
   // When the wallet changes, preserve wizard state if the new wallet is the
   // operator (Steps 3 and 6) or the owner of the current pool (e.g. after
@@ -386,6 +387,13 @@ export function CreatePoolWizard() {
     args: [address!],
     query: { enabled: !!effectivePoolAddress && !!address },
   });
+  const { data: ownerStakerInfo } = useReadContract({
+    address: effectivePoolAddress ?? undefined,
+    abi: blacklightPoolAbi,
+    functionName: "stakers",
+    args: [effectivePoolOwner!],
+    query: { enabled: !!effectivePoolAddress && !!effectivePoolOwner },
+  });
 
   const { data: approvedStaker, refetch: refetchApprovedStaker } = useReadContract({
     address: STAKING_OPERATORS_ADDRESS,
@@ -500,11 +508,13 @@ export function CreatePoolWizard() {
   const poolIdleBalanceBigInt = (poolIdleBalance as bigint | undefined) ?? undefined;
   const userStakerTuple = userStakerInfo as readonly [bigint, bigint, bigint, bigint] | undefined;
   const userProcessingStake = userStakerTuple?.[0] ?? 0n;
+  const ownerStakerTuple = ownerStakerInfo as readonly [bigint, bigint, bigint, bigint] | undefined;
+  const ownerStakeBalance = (ownerStakerTuple?.[0] ?? 0n) + (ownerStakerTuple?.[1] ?? 0n);
 
   const canActivate =
     effectivePoolAddress &&
     poolPhase === 1 && // Idle = 1
-    (poolIdleBalanceBigInt ?? 0n) >= MIN_NODE_STAKE &&
+    ownerStakeBalance >= MIN_NODE_STAKE &&
     isOperatorApproved;
 
   const commissionNum = parseInt(commissionBps, 10);
@@ -617,7 +627,7 @@ export function CreatePoolWizard() {
       return step;
     }
 
-    const idleBalance = (poolIdleBalance as bigint | undefined) ?? 0n;
+    const ownerBalance = ownerStakeBalance;
 
     // Pool is Active (phase 2) — already past approval and activation; show Register or Done
     if (poolPhase === 2) {
@@ -628,10 +638,10 @@ export function CreatePoolWizard() {
     if (!isOperatorApproved) {
       return 2;
     }
-    if (idleBalance < MIN_NODE_STAKE) {
+    if (ownerBalance < MIN_NODE_STAKE) {
       return 3;
     }
-    if (idleBalance >= MIN_NODE_STAKE) {
+    if (ownerBalance >= MIN_NODE_STAKE) {
       return 4;
     }
 
@@ -869,10 +879,10 @@ export function CreatePoolWizard() {
                 </p>
               )}
               <p className="mb-3 text-xs text-blacklight-text-muted">
-                Users and pool owner can stake idle NIL into the pool. You need at least 70,000 NIL to activate.
-                Current idle balance:{" "}
-                {poolIdleBalanceBigInt !== undefined
-                  ? `${Number(formatUnits(poolIdleBalanceBigInt, NIL_DECIMALS)).toLocaleString(undefined, { maximumFractionDigits: 2 })} NIL`
+                Users and pool owner can stake idle NIL into the pool. The pool owner must have at least 70,000 NIL stake balance to activate.
+                Current pool owner stake balance:{" "}
+                {ownerStakerTuple !== undefined
+                  ? `${Number(formatUnits(ownerStakeBalance, NIL_DECIMALS)).toLocaleString(undefined, { maximumFractionDigits: 2 })} NIL`
                   : "Loading…"}
               </p>
 
@@ -965,7 +975,7 @@ export function CreatePoolWizard() {
             <div className="rounded-xl border border-blacklight-border bg-blacklight-surface/50 p-4">
               <h3 className="mb-2 text-sm font-semibold">Step 5: Activate pool</h3>
               <p className="mb-3 text-xs text-blacklight-text-muted">
-                Pool has ≥70,000 NIL idle ({poolIdleBalanceBigInt !== undefined ? `${Number(formatUnits(poolIdleBalanceBigInt, NIL_DECIMALS)).toLocaleString(undefined, { maximumFractionDigits: 2 })} NIL` : "Loading…"}) and operator approved.
+                Pool owner has ≥70,000 NIL stake balance ({ownerStakerTuple !== undefined ? `${Number(formatUnits(ownerStakeBalance, NIL_DECIMALS)).toLocaleString(undefined, { maximumFractionDigits: 2 })} NIL` : "Loading…"}) and operator approved.
                 Activate to forward pool NIL to the node and start earning rewards.
               </p>
               <button

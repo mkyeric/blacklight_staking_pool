@@ -239,7 +239,7 @@ contract E2ENodeWalletFlowTest is Test {
         assertEq(nil.balanceOf(stakerUser), balBefore + withdrawAmount);
     }
 
-    function test_requestWithdrawAfterActivation_revertsIfBelow70k() public {
+    function test_requestWithdrawAfterActivation_nonOwnerCanGoBelow70k() public {
         vm.prank(NODE_WALLET);
         staking.approveStaker(address(pool));
 
@@ -251,10 +251,11 @@ contract E2ENodeWalletFlowTest is Test {
         vm.prank(poolOwner);
         pool.activateOperator(ACTIVATE_AMOUNT);
 
-        // Withdrawing 10k would leave 65k, below 70k floor
+        // Withdrawing 10k leaves 65k for this non-owner staker.
+        // Owner-only 70k rule means this should succeed.
         vm.prank(stakerUser);
-        vm.expectRevert();
         pool.requestWithdraw(10_000 * 1e6);
+        assertEq(pool.getPendingWithdrawalSum(stakerUser), 10_000 * 1e6);
     }
 
     // ═══════════════════════════════════════════════════════════════════

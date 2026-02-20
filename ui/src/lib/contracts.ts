@@ -325,6 +325,13 @@ export const blacklightPoolAbi = [
   {
     type: "function",
     stateMutability: "view",
+    outputs: [{ name: "", internalType: "uint256", type: "uint256" }],
+    name: "getUnprocessedPendingWithdrawalSum",
+    inputs: [{ name: "user", internalType: "address", type: "address" }],
+  },
+  {
+    type: "function",
+    stateMutability: "view",
     outputs: [
       {
         name: "",

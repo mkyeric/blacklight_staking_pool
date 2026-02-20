@@ -28,7 +28,7 @@ export default function Home() {
         {/* Hero */}
         <section className="text-center">
           <h1 className="mb-3 text-3xl font-bold tracking-tight sm:text-4xl">
-            Blacklight Staking Pool
+            Blacklight Pool
           </h1>
           <p className="mx-auto max-w-2xl text-blacklight-text-muted">
             Blacklight requires 70,000 NIL to stake solo. Don’t have that much?

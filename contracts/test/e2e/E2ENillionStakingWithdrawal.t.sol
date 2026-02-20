@@ -39,6 +39,7 @@ contract E2ENillionStakingWithdrawalTest is Test {
         nil = IERC20(NIL_ADDR);
         staking = IStakingOperators(STAKING_ADDR);
         deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        poolOwner = vm.addr(deployerKey);
         stakerUser = makeAddr("stakerUser");
         NODE_WALLET = makeAddr("e2eNillionNodeWallet");
 

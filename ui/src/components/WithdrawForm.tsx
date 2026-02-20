@@ -50,7 +50,7 @@ function formatCountdown(unlockTimestamp: number, nowSeconds: number): string {
 function formatContractError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
   if (msg.includes("OperatorStakeTooLow") || msg.includes("0x8eead6ac"))
-    return "Withdrawal would leave pool below 70,000 NIL minimum. Try a smaller amount.";
+    return "Withdrawal would leave the owner below 70,000 NIL minimum. Try a smaller amount.";
   if (msg.includes("InsufficientStake") || msg.includes("0xf1bc94d2"))
     return "Amount exceeds your balance in the pool.";
   if (msg.includes("InsufficientProcessingStake"))
@@ -147,18 +147,32 @@ export function WithdrawForm({ poolAddress }: WithdrawFormProps) {
     args: [poolAddress],
   });
 
-  const { data: totalUserStakes } = useReadContract({
-    address: poolAddress,
-    abi: blacklightPoolAbi,
-    functionName: "totalUserStakes",
-    query: { enabled: !!poolAddress },
-  });
-
   const { data: minStakePerUser } = useReadContract({
     address: poolAddress,
     abi: blacklightPoolAbi,
     functionName: "minStakePerUser",
     query: { enabled: !!poolAddress },
+  });
+  const { data: poolOwner } = useReadContract({
+    address: poolAddress,
+    abi: blacklightPoolAbi,
+    functionName: "owner",
+    query: { enabled: !!poolAddress },
+  });
+  const ownerAddress = poolOwner as `0x${string}` | undefined;
+  const { data: ownerStakeInfo } = useReadContract({
+    address: poolAddress,
+    abi: blacklightPoolAbi,
+    functionName: "stakers",
+    args: [ownerAddress!],
+    query: { enabled: !!poolAddress && !!ownerAddress },
+  });
+  const { data: ownerUnprocessedPendingWithdrawalSum } = useReadContract({
+    address: poolAddress,
+    abi: blacklightPoolAbi,
+    functionName: "getUnprocessedPendingWithdrawalSum",
+    args: [ownerAddress!],
+    query: { enabled: !!poolAddress && !!ownerAddress },
   });
 
   const {
@@ -264,15 +278,23 @@ export function WithdrawForm({ poolAddress }: WithdrawFormProps) {
   const isPoolActiveOrShuttingDown = isPoolActive || isPoolShuttingDown;
   const pendingCount = Number(pendingWithdrawalCount ?? 0n);
   const atWithdrawalLimit = isPoolActiveOrShuttingDown && pendingCount >= MAX_CONCURRENT_WITHDRAWAL_REQUESTS;
-  const totalStakesBn = typeof totalUserStakes === "bigint" ? totalUserStakes : undefined;
   const minStakeBn = typeof minStakePerUser === "bigint" ? minStakePerUser : undefined;
-  // In ShuttingDown, 70k floor is bypassed on-chain; no need to block UI
-  const wouldLeavePoolBelow70k =
+  const ownerStakeTuple = ownerStakeInfo as readonly [bigint, bigint, bigint, bigint] | undefined;
+  const ownerTotalStake = (ownerStakeTuple?.[0] ?? 0n) + (ownerStakeTuple?.[1] ?? 0n);
+  const ownerUnprocessedPendingSum =
+    typeof ownerUnprocessedPendingWithdrawalSum === "bigint" ? ownerUnprocessedPendingWithdrawalSum : 0n;
+  const isConnectedOwner =
+    !!address &&
+    !!ownerAddress &&
+    address.toLowerCase() === ownerAddress.toLowerCase();
+  // In ShuttingDown, owner 70k floor is bypassed on-chain; no need to block UI.
+  const wouldLeaveOwnerBelow70k =
     isPoolActive &&
     !isPoolShuttingDown &&
-    totalStakesBn !== undefined &&
+    isConnectedOwner &&
     parsedAmount > 0n &&
-    totalStakesBn - parsedAmount < MIN_NODE_STAKE;
+    parsedAmount <= totalBalance &&
+    ownerTotalStake - ownerUnprocessedPendingSum - parsedAmount < MIN_NODE_STAKE;
   // Contract: remaining must be 0 or >= minStakePerUser; withdrawing all (remaining === 0) is allowed
   const remainingAfterWithdraw = parsedAmount > 0n && parsedAmount <= totalBalance ? totalBalance - parsedAmount : 0n;
   const wouldLeaveBelowMinPerStaker =
@@ -301,7 +323,7 @@ export function WithdrawForm({ poolAddress }: WithdrawFormProps) {
       : isRequestFailed && requestFailureReason != null
         ? formatContractError(requestFailureReason)
         : isRequestFailed
-          ? "Transaction failed. The withdrawal may leave the pool below 70,000 NIL or another rule was not met."
+          ? "Transaction failed. The withdrawal may leave the owner below 70,000 NIL minimum or another rule was not met."
           : null;
   const withdrawProcessingErrorMsg =
     withdrawProcessingError != null
@@ -338,7 +360,7 @@ export function WithdrawForm({ poolAddress }: WithdrawFormProps) {
   function handleWithdraw() {
     if (!hasStake || !canWithdrawAmount) return;
     if (unstakePortion > 0n && atWithdrawalLimit) return;
-    if (wouldLeavePoolBelow70k) return;
+    if (wouldLeaveOwnerBelow70k) return;
     if (wouldLeaveBelowMinPerStaker) return;
     setModalSession({ immediatePortion, unstakePortion });
     setWithdrawModalOpen(true);
@@ -442,9 +464,9 @@ export function WithdrawForm({ poolAddress }: WithdrawFormProps) {
         </p>
       )}
 
-      {wouldLeavePoolBelow70k && (
+      {wouldLeaveOwnerBelow70k && (
         <p className="mb-3 text-xs text-blacklight-error">
-          Withdrawal would leave the pool below 70,000 NIL minimum. Try a smaller amount.
+          Withdrawal would leave the owner below 70,000 NIL minimum. Try a smaller amount.
         </p>
       )}
 
@@ -466,7 +488,7 @@ export function WithdrawForm({ poolAddress }: WithdrawFormProps) {
 
       {/* Single action: grouped withdraw (processing first, then unbonding request) */}
       <div className="flex flex-col gap-3">
-        {canWithdrawAmount && hasStake && !atWithdrawalLimit && !wouldLeavePoolBelow70k && !wouldLeaveBelowMinPerStaker && (
+        {canWithdrawAmount && hasStake && !atWithdrawalLimit && !wouldLeaveOwnerBelow70k && !wouldLeaveBelowMinPerStaker && (
           <div className="rounded-xl border border-blacklight-border bg-blacklight-surface/50 p-4">
             <p className="mb-3 text-sm text-blacklight-text-muted">
               This withdrawal will send{" "}

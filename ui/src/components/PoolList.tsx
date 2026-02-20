@@ -752,12 +752,6 @@ function PoolCard({ poolAddress, operatorAddress, isOperatorWallet, id }: PoolCa
     functionName: "totalUserStakes",
   });
 
-  const { data: totalPendingWithdrawals } = useReadContract({
-    address: poolAddress,
-    abi: blacklightPoolAbi,
-    functionName: "totalPendingWithdrawals",
-  });
-
   const { data: poolPhase } = useReadContract({
     address: poolAddress,
     abi: blacklightPoolAbi,
@@ -902,16 +896,6 @@ function PoolCard({ poolAddress, operatorAddress, isOperatorWallet, id }: PoolCa
           </p>
         </div>
       </div>
-
-      {totalPendingWithdrawals !== undefined &&
-        (totalPendingWithdrawals as bigint) > 0n && (
-          <div className="mb-4 text-sm">
-            <p className="stat-label">Node withdrawing stake</p>
-            <p className="stat-value text-blacklight-error">
-              {fmt(totalPendingWithdrawals as bigint)} NIL
-            </p>
-          </div>
-        )}
 
       {!isApprovalLoaded ? (
         <div className="rounded-xl border border-blacklight-border bg-blacklight-surface/50 p-4 text-center text-sm text-blacklight-text-muted">

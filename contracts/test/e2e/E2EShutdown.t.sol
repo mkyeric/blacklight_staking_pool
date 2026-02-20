@@ -62,7 +62,7 @@ contract E2EShutdownTest is Test {
         nil.approve(address(pool), stakeAmount);
         vm.prank(stakerUser);
         pool.stake(stakeAmount);
-        vm.prank(NODE_WALLET);
+        vm.prank(poolOwner);
         pool.activateOperator(ACTIVATE_AMOUNT);
 
         vm.prank(poolOwner);
