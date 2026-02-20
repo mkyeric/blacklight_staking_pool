@@ -2,6 +2,7 @@
 
 import { useKeeperPools } from "@/hooks/useKeeperPools";
 import { KeeperOperations } from "@/components/KeeperOperations";
+import { ShutdownOperations } from "@/components/ShutdownOperations";
 import { parsePoolDisplayName } from "@/lib/poolMetadata";
 import { useReadContract } from "wagmi";
 import { STAKING_OPERATORS_ADDRESS, stakingOperatorsAbi } from "@/lib/contracts";
@@ -35,8 +36,8 @@ export function PoolListKeeper() {
       <div className="card p-4">
         <h2 className="mb-2 text-xl font-semibold">Keeper Operations</h2>
         <p className="text-sm text-blacklight-text-muted">
-          Permissionless contract calls: settle epoch, process withdrawals, pull unstaked NIL.
-          Only visible to the platform fee recipient for each pool.
+          Permissionless contract calls: settle epoch, process withdrawals, pull unstaked NIL,
+          and shutdown controls. Only visible to the platform fee recipient for each pool.
         </p>
       </div>
       {keeperPools.map((pool) => (
@@ -73,7 +74,10 @@ function PoolKeeperCard({ pool }: { pool: { pool: `0x${string}`; operator: `0x${
       <p className="mb-4 text-xs text-blacklight-text-muted break-all">
         Pool: <span className="font-mono">{pool.pool}</span>
       </p>
-      <KeeperOperations poolAddress={pool.pool} />
+      <div className="space-y-4">
+        <KeeperOperations poolAddress={pool.pool} />
+        <ShutdownOperations poolAddress={pool.pool} />
+      </div>
     </article>
   );
 }

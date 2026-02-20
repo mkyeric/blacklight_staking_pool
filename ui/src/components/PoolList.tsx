@@ -95,8 +95,13 @@ function PoolApprovalChecker({
       (nodeStake as bigint) > 0n);
 
   const isDataLoaded = approvedStaker !== undefined && poolPhase !== undefined;
+  // Public Pools tab should only show operator-approved pools.
+  // My Pools should keep showing pools where the user may still have funds,
+  // even if operator approval/active status later changes during shutdown.
+  const passesOperatorGate = includeShuttingDown ? true : operatorApproved;
+
   const isPoolApproved =
-    operatorApproved &&
+    passesOperatorGate &&
     (isPoolActive || (includeShuttingDown && isPoolShuttingDown)) &&
     // When shutdown is pending (cooling-off), hide from the public Pools tab
     // but keep visible in My Pools (includeShuttingDown === true).
@@ -547,7 +552,14 @@ export function PoolListMyPools({
     return approvedPools.filter((_, i) => {
       const stakerResult = stakerResults[i];
       const pendingCountResult = pendingWithdrawalCountResults[i];
-      if (!stakerResult?.result || !pendingCountResult?.result) return false;
+      if (
+        stakerResult?.result === undefined ||
+        stakerResult?.result === null ||
+        pendingCountResult?.result === undefined ||
+        pendingCountResult?.result === null
+      ) {
+        return false;
+      }
       const [proc, staked] = stakerResult.result as readonly [bigint, bigint, bigint, bigint];
       const pendingCount = pendingCountResult.result as bigint;
       return proc > 0n || staked > 0n || pendingCount > 0n;
@@ -850,6 +862,8 @@ function PoolCard({ poolAddress, operatorAddress, isOperatorWallet, id }: PoolCa
     | readonly [boolean, bigint, bigint, boolean]
     | undefined;
   const shutdownPending = shutdownTuple?.[0] ?? false;
+  const isPoolShuttingDown =
+    poolPhase !== undefined && Number(poolPhase) === POOL_PHASE.ShuttingDown;
 
   const fmt = (val: bigint | undefined) =>
     val !== undefined
@@ -926,7 +940,9 @@ function PoolCard({ poolAddress, operatorAddress, isOperatorWallet, id }: PoolCa
         <div className="rounded-xl border border-blacklight-border bg-blacklight-surface/50 p-4 text-center text-sm text-blacklight-text-muted">
           Checking pool status…
         </div>
-      ) : nodeStake !== undefined && (nodeStake as bigint) < MIN_NODE_STAKE ? (
+      ) : !isPoolShuttingDown &&
+        nodeStake !== undefined &&
+        (nodeStake as bigint) < MIN_NODE_STAKE ? (
         <div className="rounded-xl border border-blacklight-error bg-blacklight-error/20 p-4">
           <h3 className="mb-2 text-sm font-semibold text-blacklight-error">
             Node stake below 70,000 NIL
@@ -945,7 +961,7 @@ function PoolCard({ poolAddress, operatorAddress, isOperatorWallet, id }: PoolCa
             Operator: <code className="rounded bg-blacklight-surface px-1 py-0.5 font-mono">{operatorAddress}</code>
           </p>
         </div>
-      ) : !isPoolApproved ? (
+      ) : !isPoolShuttingDown && !isPoolApproved ? (
         <div className="rounded-xl border border-blacklight-error bg-blacklight-error/20 p-4">
           <h3 className="mb-2 text-sm font-semibold text-blacklight-error">
             Pool setup incomplete

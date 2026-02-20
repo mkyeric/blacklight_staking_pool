@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useAccount,
   usePublicClient,
   useReadContract,
+  useReadContracts,
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
@@ -195,8 +196,34 @@ export function CreatePoolWizard() {
 
   const { pools: allPools } = useFactoryPools();
 
-  // Only show pools owned by the connected wallet
-  const pools = allPools.filter(
+  const allPoolPhaseContracts = useMemo(
+    () =>
+      allPools.map((p) => ({
+        address: p.pool,
+        abi: blacklightPoolAbi,
+        functionName: "poolPhase" as const,
+      })),
+    [allPools]
+  );
+
+  const { data: allPoolPhases } = useReadContracts({
+    contracts: allPoolPhaseContracts,
+    query: { enabled: allPools.length > 0 },
+  });
+
+  // Exclude shut-down pools from setup resume/progress in Create Pool tab.
+  const resumablePools = useMemo(() => {
+    if (!allPoolPhases || allPoolPhases.length !== allPools.length) {
+      return allPools;
+    }
+    return allPools.filter((_, i) => {
+      const phase = allPoolPhases[i]?.result;
+      return Number(phase) !== 3; // POOL_PHASE.ShuttingDown
+    });
+  }, [allPools, allPoolPhases]);
+
+  // Only show resumable pools owned by the connected wallet
+  const pools = resumablePools.filter(
     (p) => address && p.owner.toLowerCase() === address.toLowerCase()
   );
 
@@ -265,14 +292,14 @@ export function CreatePoolWizard() {
   // so the wizard shows the correct step (e.g. Step 3 or Step 6).
   useEffect(() => {
     if (!address || effectivePoolAddress) return;
-    const operatorPool = allPools.find(
+    const operatorPool = resumablePools.find(
       (p) => p.operator.toLowerCase() === address.toLowerCase()
     );
     if (operatorPool) {
       setResumedPoolAddress(operatorPool.pool);
       setOperatorAddress(operatorPool.operator);
     }
-  }, [allPools, address, effectivePoolAddress]);
+  }, [resumablePools, address, effectivePoolAddress]);
 
   const {
     writeContract: writeCreatePool,
@@ -364,6 +391,16 @@ export function CreatePoolWizard() {
     functionName: "poolPhase",
     query: { enabled: !!effectivePoolAddress },
   });
+  const isCurrentPoolShutDown = Number(poolPhase) === 3; // POOL_PHASE.ShuttingDown
+
+  // If the selected/resumed pool is already shut down, clear wizard progress context.
+  useEffect(() => {
+    if (!effectivePoolAddress || !isCurrentPoolShutDown) return;
+    setResumedPoolAddress(null);
+    setCreatedPoolAddress(null);
+    setStep(0);
+    setPoolDisplayName("");
+  }, [effectivePoolAddress, isCurrentPoolShutDown]);
 
   const { data: poolOperatorAddress } = useReadContract({
     address: effectivePoolAddress ?? undefined,
@@ -617,8 +654,12 @@ export function CreatePoolWizard() {
   // Check against allPools (not owner-filtered) so the wizard still works when
   // the operator wallet is connected for Steps 3 and 6.
   const poolIsCreated =
-    (isCreateConfirmed && !!createdPoolAddress) ||
-    (!!resumedPoolAddress && allPools.some((p) => p.pool.toLowerCase() === resumedPoolAddress.toLowerCase()));
+    !isCurrentPoolShutDown &&
+    ((isCreateConfirmed && !!createdPoolAddress) ||
+      (!!resumedPoolAddress &&
+        resumablePools.some(
+          (p) => p.pool.toLowerCase() === resumedPoolAddress.toLowerCase()
+        )));
 
   // Calculate current step based on state.
   // Check poolPhase first: if pool is Active (2), we're past approval/activate, so never show step 2.
