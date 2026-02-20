@@ -2050,6 +2050,77 @@ contract BlacklightPoolTest is Test {
         assertEq(nil.balanceOf(bob), bobBefore + bobShare, "bob gets share by staked");
     }
 
+    /// @notice A staker with only processingStake (not yet forwarded) receives no reward share.
+    function test_settleEpoch_excludesUnforwardedProcessingStakeFromDistribution() public {
+        _initOperatorForPool();
+        address bob = makeAddr("bob");
+
+        // Alice will be forwarded to at-node stake.
+        nil.mint(alice, 20_000 * 1e6);
+        vm.startPrank(alice);
+        nil.approve(address(pool), 20_000 * 1e6);
+        pool.stake(10_000 * 1e6);
+        vm.stopPrank();
+        vm.prank(owner);
+        pool.forwardStakeToNode();
+
+        // Bob stakes after forwarding and remains in processingStake during settlement.
+        nil.mint(bob, 20_000 * 1e6);
+        vm.startPrank(bob);
+        nil.approve(address(pool), 20_000 * 1e6);
+        pool.stake(10_000 * 1e6);
+        vm.stopPrank();
+
+        // totalStakedAtNode used for rewards = owner 90k + alice 10k = 100k. Bob processing 10k is excluded.
+        uint256 rewardAmount = 10_000 * 1e6;
+        nil.mint(address(rewardPolicy), rewardAmount);
+        rewardPolicy.setRewards(address(pool), rewardAmount);
+
+        uint256 ownerBefore = nil.balanceOf(owner);
+        uint256 aliceBefore = nil.balanceOf(alice);
+        uint256 bobBefore = nil.balanceOf(bob);
+
+        pool.settleEpoch();
+
+        uint256 platformFee = (rewardAmount * 100) / 10_000;
+        uint256 afterPlatform = rewardAmount - platformFee;
+        uint256 ownerCommission = (afterPlatform * COMMISSION_BPS) / 10_000;
+        uint256 toStakers = afterPlatform - ownerCommission;
+        uint256 ownerStakerShare = (90_000 * 1e6 * toStakers) / (100_000 * 1e6);
+        uint256 aliceStakerShare = toStakers - ownerStakerShare;
+
+        assertEq(nil.balanceOf(owner), ownerBefore + ownerCommission + ownerStakerShare, "owner gets commission + owner staker share");
+        assertEq(nil.balanceOf(alice), aliceBefore + aliceStakerShare, "alice gets share from staked amount");
+        assertEq(nil.balanceOf(bob), bobBefore, "bob gets no reward while only processing stake");
+    }
+
+    /// @notice Tiny rewards can fully round into owner remainder when pro-rata shares floor to zero.
+    function test_settleEpoch_roundingRemainderGoesToOwner() public {
+        _initOperatorForPool();
+        nil.mint(alice, 10_000 * 1e6);
+        vm.startPrank(alice);
+        nil.approve(address(pool), 10_000 * 1e6);
+        pool.stake(10_000 * 1e6);
+        vm.stopPrank();
+        vm.prank(owner);
+        pool.forwardStakeToNode();
+
+        // Smallest unit reward: platform fee and commission both round to zero, staker shares floor to zero.
+        uint256 rewardAmount = 1;
+        nil.mint(address(rewardPolicy), rewardAmount);
+        rewardPolicy.setRewards(address(pool), rewardAmount);
+
+        uint256 platformBefore = nil.balanceOf(platformFeeRecipient);
+        uint256 ownerBefore = nil.balanceOf(owner);
+        uint256 aliceBefore = nil.balanceOf(alice);
+
+        pool.settleEpoch();
+
+        assertEq(nil.balanceOf(platformFeeRecipient), platformBefore, "platform fee rounds to zero");
+        assertEq(nil.balanceOf(alice), aliceBefore, "alice share rounds to zero");
+        assertEq(nil.balanceOf(owner), ownerBefore + rewardAmount, "owner receives rounding remainder");
+    }
+
     /// @notice After settleEpoch there is no idle NIL in the contract from the claimed reward.
     function test_settleEpoch_noIdleNilFromRewards() public {
         _initOperatorForPool();
