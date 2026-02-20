@@ -353,9 +353,29 @@ export function WithdrawForm({ poolAddress }: WithdrawFormProps) {
       .filter((r) => !r.claimed && !r.cancelled);
   })();
 
-  const hasAnyClaimable = withdrawalRequests.some(
-    (r) => r.unlockTimestamp > 0 && r.unlockTimestamp <= nowSeconds && !r.claimed
-  );
+  // A request is claimable only when it's unlocked AND there is enough idle NIL in the pool.
+  // We consume idle balance in queue order to mirror how claims are actually serviced.
+  let remainingIdleForClaims = poolIdleBn;
+  const claimableByLiquidity = new Map<number, boolean>();
+  for (const req of withdrawalRequests) {
+    const queueIndex = req.queueIndex ?? -1;
+    const isUnlocked = req.unlockTimestamp > 0 && req.unlockTimestamp <= nowSeconds && !req.claimed;
+    if (!isUnlocked || queueIndex < 0) {
+      if (queueIndex >= 0) claimableByLiquidity.set(queueIndex, false);
+      continue;
+    }
+    if (remainingIdleForClaims >= req.amount) {
+      claimableByLiquidity.set(queueIndex, true);
+      remainingIdleForClaims -= req.amount;
+    } else {
+      claimableByLiquidity.set(queueIndex, false);
+    }
+  }
+
+  const hasAnyClaimable = withdrawalRequests.some((r, index) => {
+    const queueIndex = r.queueIndex ?? index;
+    return claimableByLiquidity.get(queueIndex) === true;
+  });
 
   function handleWithdraw() {
     if (!hasStake || !canWithdrawAmount) return;
@@ -596,6 +616,13 @@ export function UnbondingStakePanel({ poolAddress }: UnbondingStakePanelProps) {
     query: { enabled: isConnected && !!address },
   });
 
+  const { data: poolIdleBalance } = useReadContract({
+    address: NIL_TOKEN_ADDRESS,
+    abi: nilTokenAbi,
+    functionName: "balanceOf",
+    args: [poolAddress],
+  });
+
   const { data: withdrawalQueueRaw, refetch: refetchWithdrawalQueue } = useReadContract({
     address: poolAddress,
     abi: blacklightPoolAbi,
@@ -642,9 +669,31 @@ export function UnbondingStakePanel({ poolAddress }: UnbondingStakePanelProps) {
       .filter((r) => !r.claimed && !r.cancelled);
   })();
 
-  const hasAnyClaimable = withdrawalRequests.some(
-    (r) => r.unlockTimestamp > 0 && r.unlockTimestamp <= nowSeconds && !r.claimed
-  );
+  const poolIdleBn = typeof poolIdleBalance === "bigint" ? poolIdleBalance : 0n;
+
+  // A request is claimable only when it's unlocked AND there is enough idle NIL in the pool.
+  // We consume idle balance in queue order to mirror how claims are actually serviced.
+  let remainingIdleForClaims = poolIdleBn;
+  const claimableByLiquidity = new Map<number, boolean>();
+  for (const req of withdrawalRequests) {
+    const queueIndex = req.queueIndex ?? -1;
+    const isUnlocked = req.unlockTimestamp > 0 && req.unlockTimestamp <= nowSeconds && !req.claimed;
+    if (!isUnlocked || queueIndex < 0) {
+      if (queueIndex >= 0) claimableByLiquidity.set(queueIndex, false);
+      continue;
+    }
+    if (remainingIdleForClaims >= req.amount) {
+      claimableByLiquidity.set(queueIndex, true);
+      remainingIdleForClaims -= req.amount;
+    } else {
+      claimableByLiquidity.set(queueIndex, false);
+    }
+  }
+
+  const hasAnyClaimable = withdrawalRequests.some((r, index) => {
+    const queueIndex = r.queueIndex ?? index;
+    return claimableByLiquidity.get(queueIndex) === true;
+  });
 
   const {
     writeContract: writeCancelWithdrawal,
@@ -774,12 +823,14 @@ export function UnbondingStakePanel({ poolAddress }: UnbondingStakePanelProps) {
           </h4>
           <ul className="space-y-2">
             {withdrawalRequests.map((req, index) => {
-              const isClaimable =
+              const isUnlocked =
                 req.unlockTimestamp > 0 &&
                 req.unlockTimestamp <= nowSeconds &&
                 !req.claimed;
-              const isQueued = req.unlockTimestamp === 0;
               const queueIndex = req.queueIndex ?? index;
+              const isClaimable = claimableByLiquidity.get(queueIndex) === true;
+              const isAwaitingPoolLiquidity = isUnlocked && !isClaimable;
+              const isQueued = req.unlockTimestamp === 0;
               return (
                 <li
                   key={`${req.requestTimestamp}-${queueIndex}`}
@@ -808,6 +859,10 @@ export function UnbondingStakePanel({ poolAddress }: UnbondingStakePanelProps) {
                       >
                         {isClaiming || isClaimConfirming ? "Claiming…" : "Claim"}
                       </button>
+                    ) : isAwaitingPoolLiquidity ? (
+                      <span className="text-xs text-blacklight-warning">
+                        Awaiting pool liquidity
+                      </span>
                     ) : isQueued ? (
                       <button
                         type="button"

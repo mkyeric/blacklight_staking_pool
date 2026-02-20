@@ -30,7 +30,7 @@ import { useIsOperatorWallet } from "@/hooks/useIsOperatorWallet";
 
 // Component to check if a pool is approved for listing (for filtering).
 // Pools tab: only Active phase (poolPhase === 2) with valid operator approval.
-// My Pools tab: Active or ShuttingDown so stakers still see pools they have stake in.
+// My Pools tab: Active or ShuttingDown so users still see pools they have stake or pending withdrawals in.
 function PoolApprovalChecker({
   poolAddress,
   operatorAddress,
@@ -127,6 +127,7 @@ export function PoolList({ onStakeSuccess }: PoolListProps = {}) {
   const updatePoolApprovalStatus = (poolAddress: string) => {
     return (status: boolean | null) => {
       setPoolApprovalStatuses((prev) => {
+        if (prev.get(poolAddress) === status) return prev;
         const next = new Map(prev);
         next.set(poolAddress, status);
         return next;
@@ -468,7 +469,7 @@ type PoolListMyPoolsProps = {
   onScrollComplete?: () => void;
 };
 
-/** My Pools tab: shows full PoolCard for pools the connected wallet has joined. */
+/** My Pools tab: shows full PoolCard for pools the connected wallet has joined or has pending withdrawals in. */
 export function PoolListMyPools({
   scrollToPoolAddress,
   onScrollComplete,
@@ -483,6 +484,7 @@ export function PoolListMyPools({
   const updatePoolApprovalStatus = (poolAddress: string) => {
     return (status: boolean | null) => {
       setPoolApprovalStatuses((prev) => {
+        if (prev.get(poolAddress) === status) return prev;
         const next = new Map(prev);
         next.set(poolAddress, status);
         return next;
@@ -518,16 +520,39 @@ export function PoolListMyPools({
     query: { enabled: isConnected && !!address && approvedPools.length > 0 },
   });
 
+  const pendingWithdrawalCountContracts = useMemo(() => {
+    if (!address) return [];
+    return approvedPools.map((pool) => ({
+      address: pool.pool as `0x${string}`,
+      abi: blacklightPoolAbi,
+      functionName: "getPendingWithdrawalRequestCount" as const,
+      args: [address] as const,
+    }));
+  }, [approvedPools, address]);
+
+  const { data: pendingWithdrawalCountResults } = useReadContracts({
+    contracts: pendingWithdrawalCountContracts,
+    query: { enabled: isConnected && !!address && approvedPools.length > 0 },
+  });
+
   const joinedPools = useMemo(() => {
-    if (!stakerResults || stakerResults.length !== approvedPools.length)
+    if (
+      !stakerResults ||
+      stakerResults.length !== approvedPools.length ||
+      !pendingWithdrawalCountResults ||
+      pendingWithdrawalCountResults.length !== approvedPools.length
+    ) {
       return [];
+    }
     return approvedPools.filter((_, i) => {
-      const result = stakerResults[i];
-      if (!result?.result) return false;
-      const [proc, staked] = result.result as readonly [bigint, bigint, bigint, bigint];
-      return proc > 0n || staked > 0n;
+      const stakerResult = stakerResults[i];
+      const pendingCountResult = pendingWithdrawalCountResults[i];
+      if (!stakerResult?.result || !pendingCountResult?.result) return false;
+      const [proc, staked] = stakerResult.result as readonly [bigint, bigint, bigint, bigint];
+      const pendingCount = pendingCountResult.result as bigint;
+      return proc > 0n || staked > 0n || pendingCount > 0n;
     });
-  }, [approvedPools, stakerResults]);
+  }, [approvedPools, stakerResults, pendingWithdrawalCountResults]);
 
   // Scroll to the staked pool when navigating from QuickStakeModal
   useEffect(() => {

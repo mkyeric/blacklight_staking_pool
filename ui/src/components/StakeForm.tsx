@@ -277,7 +277,6 @@ export function StakeForm({ poolAddress }: StakeFormProps) {
         onSuccess={handleStakingSuccess}
         onError={(message) => {
           setStakeErrorMsg(message);
-          setStakingModalOpen(false);
         }}
         poolAddress={poolAddress}
         amount={parsedAmount}
