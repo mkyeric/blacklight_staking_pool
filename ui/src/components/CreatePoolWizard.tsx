@@ -636,20 +636,6 @@ export function CreatePoolWizard() {
     );
   }
 
-  if (!POOL_FACTORY_ADDRESS) {
-    return (
-      <section className="card p-6 text-center">
-        <p className="text-blacklight-warning">
-          Pool factory address is not configured. Set{" "}
-          <code className="rounded bg-blacklight-surface px-1 py-0.5 font-mono text-xs">
-            NEXT_PUBLIC_POOL_FACTORY_ADDRESS
-          </code>{" "}
-          in .env.local.
-        </p>
-      </section>
-    );
-  }
-
   // Pool is "created" if we confirmed the tx OR we resumed from an existing pool.
   // Check against allPools (not owner-filtered) so the wizard still works when
   // the operator wallet is connected for Steps 3 and 6.

@@ -102,6 +102,11 @@ export function QuickStakeModal({
     minStake === undefined
       ? true
       : existingStake + parsedAmount >= minStake;
+  const isAccumulateStage = !isPoolActive && canStake;
+  const depositAmountMeetsMin =
+    !isAccumulateStage ||
+    minStake === undefined ||
+    parsedAmount >= minStake;
 
   // Reset state when modal closes
   useEffect(() => {
@@ -112,7 +117,7 @@ export function QuickStakeModal({
   }, [open]);
 
   function handleStake() {
-    if (!isValidAmount || !hasEnoughBalance || !canStake || isPoolShuttingDown || !meetsMinStake)
+    if (!isValidAmount || !hasEnoughBalance || !canStake || isPoolShuttingDown || !meetsMinStake || !depositAmountMeetsMin)
       return;
     setStakingModalOpen(true);
   }
@@ -220,6 +225,17 @@ export function QuickStakeModal({
                 </p>
               )}
 
+              {isAccumulateStage && isValidAmount && minStake !== undefined && !depositAmountMeetsMin && (
+                <p className="text-sm text-blacklight-error">
+                  In the accumulate stage, deposit amount must be at least{" "}
+                  {Number(formatUnits(minStake, NIL_DECIMALS)).toLocaleString(
+                    undefined,
+                    { maximumFractionDigits: 2 }
+                  )}{" "}
+                  NIL (min. per staker).
+                </p>
+              )}
+
               <p className="text-xs text-blacklight-text-muted">
                 After you stake, your NIL will show as processing stake until the pool forwards it
                 to the node. You can withdraw from processing stake anytime on the pool page.
@@ -240,7 +256,8 @@ export function QuickStakeModal({
                     !isValidAmount ||
                     !hasEnoughBalance ||
                     isPoolShuttingDown ||
-                    !meetsMinStake
+                    !meetsMinStake ||
+                    !depositAmountMeetsMin
                   }
                   className="btn-primary flex-1"
                 >
@@ -259,7 +276,7 @@ export function QuickStakeModal({
         poolAddress={poolAddress}
         amount={parsedAmount}
         needsApproval={needsApproval}
-        stakeLabel={isPoolActive ? "Deposit to pool" : "Accumulate NIL"}
+        stakeLabel={isPoolActive ? "Stake" : "Accumulate NIL"}
       />
     </>,
     document.body

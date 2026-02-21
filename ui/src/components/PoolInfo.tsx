@@ -47,7 +47,7 @@ export function PoolInfo() {
         })
       : "—";
 
-  const stakeNum = nodeStake ? Number(formatUnits(nodeStake as bigint, NIL_DECIMALS)) : 0;
+  const stakeNum = nodeStake !== undefined ? Number(formatUnits(nodeStake, NIL_DECIMALS)) : 0;
   const threshold = 70_000;
   const progress = Math.min((stakeNum / threshold) * 100, 100);
 
@@ -77,11 +77,11 @@ export function PoolInfo() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div>
           <p className="stat-label">Staked to Node</p>
-          <p className="stat-value">{fmt(nodeStake as bigint)} NIL</p>
+          <p className="stat-value">{fmt(nodeStake)} NIL</p>
         </div>
         <div>
           <p className="stat-label">Pool Idle Balance</p>
-          <p className="stat-value">{fmt(poolBalance as bigint)} NIL</p>
+          <p className="stat-value">{fmt(poolBalance)} NIL</p>
         </div>
         <div>
           <p className="stat-label">Node Status</p>
@@ -98,7 +98,7 @@ export function PoolInfo() {
         {isConnected && (
           <div>
             <p className="stat-label">Your NIL Balance</p>
-            <p className="stat-value">{fmt(userBalance as bigint)} NIL</p>
+            <p className="stat-value">{fmt(userBalance as bigint | undefined)} NIL</p>
           </div>
         )}
       </div>

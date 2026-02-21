@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
-import { AbiEvent, formatUnits } from "viem";
+import { AbiEvent, formatUnits, parseUnits } from "viem";
 import {
   useAccount,
   usePublicClient,
@@ -156,22 +156,6 @@ export function PoolList({ onStakeSuccess }: PoolListProps = {}) {
       (pool) => !poolApprovalStatuses.has(pool.pool) || poolApprovalStatuses.get(pool.pool) === null
     );
   }, [pools, poolApprovalStatuses]);
-
-  if (!process.env.NEXT_PUBLIC_POOL_FACTORY_ADDRESS) {
-    return (
-      <section className="card p-6 text-center">
-        <h2 className="mb-2 text-xl font-semibold">Pools</h2>
-        <p className="text-sm text-blacklight-warning">
-          Pool factory address is not configured. Set{" "}
-          <code className="rounded bg-blacklight-surface px-1 py-0.5 font-mono text-xs">
-            NEXT_PUBLIC_POOL_FACTORY_ADDRESS
-          </code>{" "}
-          in your <code>.env.local</code>, then deploy and create pools via the
-          factory.
-        </p>
-      </section>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -591,15 +575,6 @@ export function PoolListMyPools({
     }
   }, [scrollToPoolAddress, joinedPools, onScrollComplete]);
 
-  if (!process.env.NEXT_PUBLIC_POOL_FACTORY_ADDRESS) {
-    return (
-      <section className="card p-6 text-center">
-        <h2 className="mb-2 text-xl font-semibold">My Pools</h2>
-        <p className="text-sm text-blacklight-warning">Pool factory is not configured.</p>
-      </section>
-    );
-  }
-
   if (isLoading) {
     return (
       <section className="card p-6 text-center">
@@ -684,15 +659,15 @@ export function PoolListMyPools({
       {isOperatorWallet && <OperatorWalletWarning />}
       {/* How-to panel shown at the top of My Pools when the user has at least one joined pool */}
       <section className="card p-6">
-        <h2 className="mb-2 text-lg font-semibold">How to deposit and withdraw</h2>
+        <h2 className="mb-2 text-lg font-semibold">How to stake and withdraw</h2>
         <p className="mb-3 text-sm text-blacklight-text-muted">
           Use the forms on each pool to add NIL or take it out:
         </p>
         <div className="space-y-2 text-sm text-blacklight-text-muted">
           <p>
-            <span className="font-semibold text-blacklight-text">Deposit</span>{" "}
-            — Enter amount → approve NIL (if needed) → deposit to pool. Funds stay in the pool
-            until the operator forwards them to the node.
+            <span className="font-semibold text-blacklight-text">Stake</span>{" "}
+            — Enter amount → approve NIL (if needed) → stake to pool. Funds stay in the pool
+            until the platform keeper forwards them to the node.
           </p>
           <p>
             <span className="font-semibold text-blacklight-text">Withdraw</span>{" "}
@@ -753,7 +728,7 @@ function PoolCard({ poolAddress, operatorAddress, isOperatorWallet, id }: PoolCa
   const [helpTooltip, setHelpTooltip] = useState<
     "processing-stake" | "processing-unstake" | null
   >(null);
-  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | number | null>(null);
   const tooltipPopoverRef = useRef<HTMLSpanElement | null>(null);
   useEffect(() => {
     return () => {
@@ -1249,7 +1224,10 @@ function RewardsHistory({ poolAddress }: { poolAddress: `0x${string}` }) {
           });
         }
 
+        const minRewardDisplay = parseUnits("0.001", NIL_DECIMALS);
+
         const sorted = classified
+          .filter((c) => c.amount >= minRewardDisplay)
           .sort((a, b) => {
             if (a.blockNumber === b.blockNumber) {
               return Number(b.logIndex - a.logIndex);

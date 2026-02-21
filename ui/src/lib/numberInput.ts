@@ -45,7 +45,7 @@ export function parseDecimalAmount(
   }
 
   try {
-    return parseUnits(sanitized, decimals);
+    return parseUnits(sanitized, Number(decimals));
   } catch {
     // As a safety net, never let parseUnits throw into the React tree
     return 0n;

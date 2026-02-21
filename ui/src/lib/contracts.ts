@@ -4,6 +4,7 @@
  * Addresses are public on-chain values (not secrets).
  */
 
+import { POOL_FACTORY_ADDRESS as CONFIG_POOL_FACTORY_ADDRESS } from "@/config";
 import NILTokenABI from "@/abis/NILToken.json";
 import StakingOperatorsABI from "@/abis/StakingOperators.json";
 
@@ -30,11 +31,10 @@ export const NIL_DECIMALS = 6;
 export const MIN_NODE_STAKE = 70_000n * 10n ** 6n; // 70,000 NIL (6 decimals)
 
 // ---------------------------------------------------------------------------
-// Pool factory (multi-pool support)
+// Pool factory (multi-pool support) — see src/config.ts for canonical address
 // ---------------------------------------------------------------------------
 
-export const POOL_FACTORY_ADDRESS = (process.env
-  .NEXT_PUBLIC_POOL_FACTORY_ADDRESS ?? "") as `0x${string}`;
+export const POOL_FACTORY_ADDRESS = CONFIG_POOL_FACTORY_ADDRESS as `0x${string}`;
 
 // Minimal ABI for PoolFactory: PoolCreated events + createPool.
 export const poolFactoryAbi = [

@@ -109,15 +109,21 @@ export function StakeForm({ poolAddress }: StakeFormProps) {
     minStake === undefined
       ? true
       : existingStake + parsedAmount >= minStake;
-  const isPoolConfigured = !!poolAddress;
   const phase = Number(poolPhase);
   const isPoolActive = phase === POOL_PHASE.Active;
   const isPoolShuttingDown = phase === POOL_PHASE.ShuttingDown;
   const canStake = isPoolActive || phase === POOL_PHASE.Idle;
-  const stakeLabel = isPoolActive ? "Deposit to pool" : "Accumulate NIL";
+  const stakeLabel = isPoolActive ? "Stake" : "Accumulate NIL";
+  // In accumulate stage, do not allow deposit less than min stake per staker
+  const isAccumulateStage = !isPoolActive && canStake;
+  const depositAmountMeetsMin =
+    !isAccumulateStage ||
+    minStake === undefined ||
+    parsedAmount >= minStake;
+  const isPoolConfigured = !!poolAddress;
 
   function handleOpenStakingModal() {
-    if (!isValidAmount || !hasEnoughBalance || !canStake || isPoolShuttingDown || !meetsMinStake) return;
+    if (!isValidAmount || !hasEnoughBalance || !canStake || isPoolShuttingDown || !meetsMinStake || !depositAmountMeetsMin) return;
     setStakeErrorMsg(null);
     setStakingModalOpen(true);
   }
@@ -154,11 +160,7 @@ export function StakeForm({ poolAddress }: StakeFormProps) {
     return (
       <section className="card p-6 text-center">
         <p className="text-blacklight-warning">
-          No pool selected. Set{" "}
-          <code className="rounded bg-blacklight-surface px-1 py-0.5 font-mono text-xs">
-            NEXT_PUBLIC_POOL_FACTORY_ADDRESS
-          </code>{" "}
-          in .env.local and create at least one pool via the Create Pool wizard.
+          No pool selected. Create at least one pool via the Create Pool wizard.
         </p>
       </section>
     );
@@ -166,7 +168,7 @@ export function StakeForm({ poolAddress }: StakeFormProps) {
 
   return (
     <section className="card p-6">
-      <h2 className="mb-4 text-xl font-semibold">Deposit</h2>
+      <h2 className="mb-4 text-xl font-semibold">Stake</h2>
 
       {isPoolShuttingDown && (
         <div className="mb-4 rounded-xl border-2 border-blacklight-error bg-blacklight-error/20 p-4">
@@ -232,20 +234,30 @@ export function StakeForm({ poolAddress }: StakeFormProps) {
         </p>
       )}
 
+      {isAccumulateStage && isValidAmount && minStake !== undefined && !depositAmountMeetsMin && (
+        <p className="mb-4 text-sm text-blacklight-error">
+          In the accumulate stage, deposit amount must be at least{" "}
+          {Number(formatUnits(minStake, NIL_DECIMALS)).toLocaleString(undefined, {
+            maximumFractionDigits: 2,
+          })}{" "}
+          NIL (min. per staker).
+        </p>
+      )}
+
       {/* Single action: open staking popup (approve + stake grouped) */}
       <div className="flex flex-col gap-3">
-        {isValidAmount && hasEnoughBalance && meetsMinStake && canStake && !isPoolShuttingDown && (
+        {isValidAmount && hasEnoughBalance && meetsMinStake && depositAmountMeetsMin && canStake && !isPoolShuttingDown && (
           <div className="rounded-xl border border-blacklight-border bg-blacklight-surface/50 p-4">
             <p className="mb-3 text-sm text-blacklight-text-muted">
               {isPoolActive
-                ? "Deposit NIL into the pool. You'll confirm the required transaction(s) in a popup (approve spending cap if needed, then deposit). Your deposit stays in the pool as until the pool owner forwards it to staking."
+                ? "Stake NIL into the pool. You'll confirm the required transaction(s) in a popup (approve spending cap if needed, then stake). Your stake stays in the pool until the pool owner forwards it to staking."
                 : "Add NIL to the pool. You'll confirm the required transaction(s) in a popup (approve spending cap if needed, then accumulate)."}
             </p>
             <button
               onClick={handleOpenStakingModal}
               className="btn-primary w-full"
             >
-              {isPoolActive ? "Deposit to pool" : "Accumulate NIL"}
+              {isPoolActive ? "Stake" : "Accumulate NIL"}
             </button>
           </div>
         )}
