@@ -3,7 +3,6 @@
 A **non-custodial staking pool** for the **[Nillion Blacklight](https://blacklight.nillion.com/)** L2. Lets users with less than **70,000 NIL** participate in Blacklight rewards by pooling with others; one operator (verifier node) per pool.
 
 - **Network:** Nillion Blacklight (Ethereum L2, Conduit)
-- **Docs:** [requirements.md](requirements.md) (system requirements) · [Learning materials/](Learning%20materials/) (onboarding, staking, contracts, deployment)
 - **ABIs:** [abis/](abis/) — NIL token, StakingOperators, RewardPolicy (see [abis/README.md](abis/README.md))
 
 ## Repository Structure
@@ -60,7 +59,7 @@ A **non-custodial staking pool** for the **[Nillion Blacklight](https://blacklig
 
 - **Docker** (for the official Blacklight verifier image).  
 - **Server or VM** with stable internet and minimal specs (see [Blacklight FAQ](https://blacklight.nillion.com/): e.g. 2 CPU, 1 GB RAM, 1 GB storage).  
-- **Node wallet:** Generated during node setup; this is the address that must have ≥70,000 NIL staked to earn rewards.
+- **Node wallet:** Generated during node setup
 
 ---
 
@@ -83,18 +82,18 @@ See [contracts/README.md](contracts/README.md) for deployment instructions.
 cd ui
 npm install
 cp .env.example .env.local
-# Fill in your WalletConnect project ID, pool address, and operator address
+# Fill in your WalletConnect project ID and pool factory address
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). See [ui/README.md](ui/README.md) for details.
+Open [http://localhost:3000](http://localhost:3000). The UI shows **Pools**, **My Pools**, **Keeper** (if applicable), and **Create Pool** (rightmost). Set `NEXT_PUBLIC_SHOW_CREATE_POOL=false` in `.env.local` to hide the Create Pool tab for staker-only builds. See [ui/README.md](ui/README.md) for details.
 
 ## How It Works
 
 1. **Users stake NIL** into the pool (approve + stake); pool forwards it to the staking contract for the linked **operator** (verifier node).
 2. **Node needs ≥ 70,000 NIL** to earn rewards. Owner’s stake (e.g. from existing node stake) + pool stakers count toward that.
 3. **Rewards** are pulled into the pool via the reward policy `claim()`; they are settled and distributed to all stakers (including the owner) proportionally.
-4. **Withdrawals** go through a queue: request → permissionless batch unstake from staking contract → unlock delay → claim. Owner withdraws the same way (subject to 70k NIL floor, except when the pool is in **ShuttingDown** after shutdown is confirmed).
+4. **Withdrawals** go through a queue: request → permissionless batch unstake from staking contract → unlock delay → claim. Only the **owner** is subject to a 70k NIL effective-stake floor when requesting a withdrawal in Active phase; other stakers are not. In **ShuttingDown** this floor is bypassed for everyone.
 
 ## Features
 
@@ -102,7 +101,7 @@ Open [http://localhost:3000](http://localhost:3000). See [ui/README.md](ui/READM
 - **Permissionless** — withdrawal batching and (when implemented) reward settlement can be triggered by anyone.
 - **Bounded** — max 100 stakers per pool, max 100,000 NIL per staker (contract constants).
 - **One operator = one pool** — each pool is tied to a single Blacklight node.
-- **Shutdown** — Owner or platform keeper can initiate shutdown; a cooling-off period keeps the pool Active (stake allowed, 70k enforced). Only explicit **confirmShutdown()** transitions to ShuttingDown (no new stakes, 70k bypassed). See [requirements.md](requirements.md) FR-6.
+- **Shutdown** — Owner or platform keeper can initiate shutdown; a cooling-off period keeps the pool Active (stake allowed, owner 70k floor enforced). Only explicit **confirmShutdown()** transitions to ShuttingDown (no new stakes, owner 70k floor bypassed). See [requirements.md](requirements.md) FR-6.
 
 ## Contributing
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { PoolList, PoolListMyPools } from "@/components/PoolList";
@@ -14,6 +14,12 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabId>("pools");
   const [scrollToPoolAddress, setScrollToPoolAddress] = useState<string | null>(null);
   const { isKeeper } = useKeeperPools();
+  const showCreatePool =
+    process.env.NEXT_PUBLIC_SHOW_CREATE_POOL !== "false";
+
+  useEffect(() => {
+    if (!showCreatePool && activeTab === "create") setActiveTab("pools");
+  }, [showCreatePool, activeTab]);
 
   const handleStakeSuccess = useCallback((poolAddress: string) => {
     setActiveTab("mypools");
@@ -31,7 +37,15 @@ export default function Home() {
             Blacklight Pool
           </h1>
           <p className="mx-auto max-w-2xl text-blacklight-text-muted">
-            Blacklight requires 70,000 NIL to stake solo. Don’t have that much?
+            <a
+              href="https://blacklight.nillion.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blacklight-accent hover:text-blacklight-accent-hover underline underline-offset-2"
+            >
+              Nillion Blacklight
+            </a>{" "}
+            requires 70,000 NIL to stake solo. Don’t have that much?
             Pool your NIL here with others to meet the minimum and earn rewards.
           </p>
         </section>
@@ -74,17 +88,19 @@ export default function Home() {
                 Keeper
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setActiveTab("create")}
-              className={`-mb-px border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
-                activeTab === "create"
-                  ? "border-blacklight-accent text-blacklight-accent"
-                  : "border-transparent text-blacklight-text-muted hover:border-blacklight-border hover:text-blacklight-text"
-              }`}
-            >
-              Create Pool
-            </button>
+            {showCreatePool && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("create")}
+                className={`-mb-px ml-auto border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
+                  activeTab === "create"
+                    ? "border-blacklight-accent text-blacklight-accent"
+                    : "border-transparent text-blacklight-text-muted hover:border-blacklight-border hover:text-blacklight-text"
+                }`}
+              >
+                Create Pool
+              </button>
+            )}
           </nav>
         </div>
 
@@ -100,7 +116,7 @@ export default function Home() {
 
         {activeTab === "keeper" && <PoolListKeeper />}
 
-        {activeTab === "create" && <CreatePoolWizard />}
+        {showCreatePool && activeTab === "create" && <CreatePoolWizard />}
       </main>
 
       <Footer />

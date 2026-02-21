@@ -67,3 +67,7 @@ ABI files for contracts on the Nillion Blacklight L2. Staking involves the **NIL
 3. **Reward policy contract** — Holds and streams NIL rewards for verifier work. The pool (as recipient/approved staker) calls `claim()` to pull rewards into the pool for settlement and distribution to stakers.
 
 Your pool uses all three: **NIL** for user↔pool flows, **StakingOperators** for pool↔node flows, **RewardPolicy** for claiming verifier rewards.
+
+---
+
+For the Blacklight Pool web UI (tabs, env, and Create Pool visibility), see [../ui/README.md](../ui/README.md).

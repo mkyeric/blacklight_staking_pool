@@ -19,11 +19,11 @@ Solidity contracts for the Blacklight staking pool, built with [Foundry](https:/
   - Withdrawals are always user-initiated and flow back to the user.
 - **Phases**:
   - `Uninitialized` → `Idle` (after `initialize`) → `Active` (after `activateOperator`) → `ShuttingDown` (after `confirmShutdown`).
-  - In `ShuttingDown`, new stakes are blocked and the 70k operator floor is **bypassed** so everyone can exit.
+  - In `ShuttingDown`, new stakes are blocked and the owner 70k floor is **bypassed** so everyone can exit.
 - **Limits and invariants**:
   - Min per-user stake \(MIN_STAKE_PER_USER = 500 NIL\), adjustable up by owner.
   - Max 100 stakers / pool, max 100,000 NIL per staker.
-  - Owner must keep at least 70,000 NIL staked at the node while the pool is `Active` (70k floor).
+  - In `Active` phase, only the **owner** must keep effective stake (processing + staked minus unprocessed pending withdrawals) ≥ 70,000 NIL when requesting a withdrawal; other stakers may withdraw without this floor.
 - **Reward distribution** (`settleEpoch`):
   - Pool calls `rewardPolicy.claim()` and immediately distributes:
     - 1% **platform fee** to `platformFeeRecipient` (hard-coded 100 bps).
@@ -54,8 +54,8 @@ Solidity contracts for the Blacklight staking pool, built with [Foundry](https:/
    - This sets the pool as the only address allowed to call `stakeTo` / `requestUnstake` / `withdrawUnstaked` for that operator.
 4. **Fund and activate**
    - Users (not the operator) call `stake(amount)` into the pool; deposits start as **processing stake**.
-   - Owner calls `activateOperator(amountToStake)` once enough idle NIL is in the pool (≥ 70,000 NIL and ≥ `amountToStake`).
-   - `activateOperator` forwards that amount to the staking contract and transitions pool → `Active`.
+   - Once the pool holds ≥ 70,000 NIL (from any stakers), the owner calls `activateOperator(amountToStake)` with `amountToStake` ≥ 70,000 NIL and ≤ total processing stake. The **web UI** only shows the Activate step when the pool owner has at least 70,000 NIL stake balance (processing + staked).
+   - `activateOperator` stakes that amount from the pool to the node via the staking contract (converting that much processing stake to at-node stake proportionally) and transitions the pool → `Active`.
 5. **Ongoing operation**
    - Users keep staking (subject to per-user min/max and global caps).
    - Anyone may:
@@ -64,10 +64,10 @@ Solidity contracts for the Blacklight staking pool, built with [Foundry](https:/
      - Run withdrawal maintenance via `processWithdrawalBatch` / `pullUnstakedFromStaking` / `processUserWithdrawals`.
 6. **Shutdown**
    - Owner or platform keeper (platform fee recipient) calls `initiateShutdown()` / `initiateShutdownByKeeper()`.
-   - Pool stays `Active` during the cooling‑off period; staking is still allowed and 70k floor enforced.
+   - Pool stays `Active` during the cooling‑off period; staking is still allowed and owner 70k floor enforced.
    - After `SHUTDOWN_COOLING_OFF_PERIOD`, anyone can call `confirmShutdown()` → pool enters `ShuttingDown`:
      - New stakes are blocked.
-     - 70k floor is removed so everyone can exit via the withdrawal queue.
+     - Owner 70k floor is bypassed so everyone can exit via the withdrawal queue.
 
 ## Setup
 
@@ -132,6 +132,6 @@ forge test --match-path "test/e2e/*.t.sol" -vvv
 
 3. **After deployment**
 
-   - Use the **UI** or direct `factory.createPool(...)` calls to create pools.
+   - Use the **UI** (Create Pool tab) or direct `factory.createPool(...)` calls to create pools. The UI can be built with or without the Create Pool tab via `NEXT_PUBLIC_SHOW_CREATE_POOL` (see [ui/README.md](../ui/README.md)).
    - For each pool, the node operator must call `approveStaker(poolAddress)` on the `StakingOperators` contract so the pool can stake to that node.
 
