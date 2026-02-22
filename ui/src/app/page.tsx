@@ -33,19 +33,11 @@ export default function Home() {
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-10">
         {/* Hero */}
         <section className="text-center">
-          <h1 className="mb-3 text-3xl font-bold tracking-tight sm:text-4xl">
+          <h1 className="mb-5 text-3xl font-bold tracking-tight sm:text-4xl">
             Blacklight Pool
           </h1>
           <p className="mx-auto max-w-2xl text-blacklight-text-muted">
-            <a
-              href="https://blacklight.nillion.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blacklight-accent hover:text-blacklight-accent-hover underline underline-offset-2"
-            >
-              Nillion Blacklight
-            </a>{" "}
-            requires 70,000 NIL to stake solo. Don’t have that much?
+            Nillion Blacklight requires 70,000 NIL to stake solo. Don’t have that much?
             Pool your NIL here with others to meet the minimum and earn rewards.
           </p>
         </section>

@@ -94,7 +94,17 @@ function PoolApprovalChecker({
       nodeStake !== undefined &&
       (nodeStake as bigint) > 0n);
 
-  const isDataLoaded = approvedStaker !== undefined && poolPhase !== undefined;
+  // Don't report approval until we have all contract data that affects it.
+  // Otherwise we can report "not approved" while isActive/nodeStake are still
+  // loading, then flip to approved later and only show the pool after tab switch.
+  const operatorDataReady =
+    explicitlyApproved || (isActive !== undefined && nodeStake !== undefined);
+  const shutdownDataReady = includeShuttingDown || shutdownStatus !== undefined;
+  const isDataLoaded =
+    approvedStaker !== undefined &&
+    poolPhase !== undefined &&
+    operatorDataReady &&
+    shutdownDataReady;
   // Public Pools tab should only show operator-approved pools.
   // My Pools should keep showing pools where the user may still have funds,
   // even if operator approval/active status later changes during shutdown.

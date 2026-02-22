@@ -30,13 +30,21 @@ export function useFactoryPools(): UseFactoryPoolsResult {
   const [error, setError] = useState<Error | undefined>();
 
   useEffect(() => {
+    if (!publicClient || !POOL_FACTORY_ADDRESS) {
+      // Wagmi may not have publicClient on first paint; treat as loading so we
+      // don't show "No pools" until we've actually attempted a fetch.
+      if (!publicClient) setIsLoading(true);
+      return;
+    }
+
+    const client = publicClient;
+
     async function load() {
-      if (!publicClient || !POOL_FACTORY_ADDRESS) return;
       setIsLoading(true);
       setError(undefined);
       try {
         const event = poolFactoryAbi[0];
-        const logs = await publicClient.getLogs({
+        const logs = await client.getLogs({
           address: POOL_FACTORY_ADDRESS,
           event,
           fromBlock: 0n,
@@ -55,7 +63,8 @@ export function useFactoryPools(): UseFactoryPoolsResult {
           uniqueByPool.set(p.pool.toLowerCase(), p);
         }
 
-        setPools(Array.from(uniqueByPool.values()));
+        const uniquePools = Array.from(uniqueByPool.values());
+        setPools(uniquePools);
       } catch (e) {
         setError(e as Error);
       } finally {
