@@ -279,7 +279,7 @@ function PoolTable({
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-blacklight-text-muted">
               Min. per staker
             </th>
-            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-blacklight-text-muted">
+            <th className="sticky right-0 z-10 bg-blacklight-surface px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-blacklight-text-muted shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.1)]">
               Action
             </th>
           </tr>
@@ -402,10 +402,13 @@ function PoolTableRow({ poolAddress, operatorAddress, isOperatorWallet, onStakeS
 
   return (
     <>
-      <tr className="border-b border-blacklight-border last:border-b-0 transition-colors hover:bg-blacklight-surface/30">
+      <tr className="group border-b border-blacklight-border last:border-b-0 transition-colors hover:bg-blacklight-surface/30">
         <td className="px-4 py-3">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-blacklight-text underline decoration-blacklight-accent/50 underline-offset-2">
+            <span
+              className="font-medium text-blacklight-text underline decoration-blacklight-accent/50 underline-offset-2 cursor-help"
+              title={`Operator: ${operatorAddress}`}
+            >
               {poolDisplayName}
             </span>
             {isJoined && (
@@ -440,7 +443,7 @@ function PoolTableRow({ poolAddress, operatorAddress, isOperatorWallet, onStakeS
         <td className="px-4 py-3 text-sm text-blacklight-text font-mono">
           {minStakeFormatted} NIL
         </td>
-        <td className="px-4 py-3 text-right">
+        <td className="sticky right-0 z-10 bg-blacklight-card px-4 py-3 text-right shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.1)] group-hover:bg-blacklight-surface">
           <button
             type="button"
             onClick={() => setQuickStakeOpen(true)}
@@ -686,7 +689,7 @@ export function PoolListMyPools({
             (NIL that is still sitting in the pool and has not yet been staked to the node);
             this part is sent to your wallet immediately. For any remaining amount that is
             already staked in an <span className="font-semibold">active</span> pool,
-            wait ~8 days (7-day unbonding + 1-day processing buffer) →
+            wait ~8 days (7-day unbonding + 1-day processing time) →
             <span className="font-semibold"> Claim</span> to receive NIL in your wallet.
           </p>
         </div>
@@ -1021,9 +1024,8 @@ function PoolCard({ poolAddress, operatorAddress, isOperatorWallet, id }: PoolCa
                         role="tooltip"
                         onMouseLeave={handleHelpMouseLeave}
                       >
-                        NIL you deposited that has not yet been forwarded to the node. The pool
-                        owner or any keeper will process it to move it to &quot;Staked&quot;. You can
-                        withdraw it anytime with &quot;Withdraw processing stake&quot;.
+                        NIL you deposited that has not yet been forwarded to the node. The keeper
+                        processes it to move it to &quot;Staked&quot; (runs automatically every hour).
                       </span>
                     )}
                   </span>
@@ -1093,7 +1095,7 @@ function PoolCard({ poolAddress, operatorAddress, isOperatorWallet, id }: PoolCa
                         >
                           NIL you requested to withdraw that is being unstaked from the node. A
                           keeper will process the batch; then there is a 7-day unbonding period
-                          plus a 1-day claim buffer. After that you can claim to your wallet.
+                          plus a 1-day processing time. After that you can claim to your wallet.
                         </span>
                       )}
                     </span>

@@ -38,7 +38,7 @@ export default function Home() {
           </h1>
           <p className="mx-auto max-w-2xl text-blacklight-text-muted">
             Nillion Blacklight requires 70,000 NIL to stake solo. Don’t have that much?
-            Pool your NIL here with others to meet the minimum and earn rewards.
+            Pool your NIL here with others to earn rewards.
           </p>
         </section>
 

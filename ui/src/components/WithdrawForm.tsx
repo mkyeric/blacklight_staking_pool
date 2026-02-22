@@ -807,7 +807,7 @@ export function UnbondingStakePanel({ poolAddress }: UnbondingStakePanelProps) {
       <h2 className="mb-2 text-xl font-semibold">Unbonding Stake</h2>
       <p className="mb-2 text-xs text-blacklight-text-muted">
         Withdrawal requests that unstake from the node enter an ~8-day unbonding period
-        (7-day unbonding + 1-day processing buffer). You can have up to{" "}
+        (7-day unbonding + 1-day processing time). You can have up to{" "}
         {MAX_CONCURRENT_WITHDRAWAL_REQUESTS} concurrent requests per pool; current:{" "}
         {pendingCount}/{MAX_CONCURRENT_WITHDRAWAL_REQUESTS}.
       </p>
