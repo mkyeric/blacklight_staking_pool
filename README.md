@@ -98,10 +98,10 @@ Open [http://localhost:3000](http://localhost:3000). The UI shows **Pools**, **M
 ## Features
 
 - **Non-custodial** — NIL only moves via defined contract actions; operator cannot unilaterally withdraw user stake.
-- **Permissionless** — withdrawal batching and (when implemented) reward settlement can be triggered by anyone.
+- **Permissionless** — withdrawal batching and reward settlement can be triggered by anyone.
 - **Bounded** — max 100 stakers per pool, max 100,000 NIL per staker (contract constants).
 - **One operator = one pool** — each pool is tied to a single Blacklight node.
-- **Shutdown** — Owner or platform keeper can initiate shutdown; a cooling-off period keeps the pool Active (stake allowed, owner 70k floor enforced). Only explicit **confirmShutdown()** transitions to ShuttingDown (no new stakes, owner 70k floor bypassed). See [requirements.md](requirements.md) FR-6.
+- **Shutdown** — Owner or platform keeper can initiate shutdown; a cooling-off period keeps the pool Active (stake allowed, owner 70k floor enforced). Only explicit **confirmShutdown()** transitions to ShuttingDown (no new stakes, owner 70k floor bypassed).
 
 ## Contributing
 
