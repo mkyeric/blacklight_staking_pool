@@ -377,6 +377,12 @@ export function WithdrawForm({ poolAddress }: WithdrawFormProps) {
     return claimableByLiquidity.get(queueIndex) === true;
   });
 
+  function handleMax() {
+    if (totalBalance > 0n) {
+      setAmount(formatUnits(totalBalance, NIL_DECIMALS));
+    }
+  }
+
   function handleWithdraw() {
     if (!hasStake || !canWithdrawAmount) return;
     if (unstakePortion > 0n && atWithdrawalLimit) return;
@@ -434,15 +440,26 @@ export function WithdrawForm({ poolAddress }: WithdrawFormProps) {
         >
           Amount (NIL)
         </label>
-        <input
-          id={`withdraw-amount-${poolAddress}`}
-          type="text"
-          inputMode="decimal"
-          placeholder="0.00"
-          value={amount}
-          onChange={(e) => setAmount(sanitizeDecimalInput(e.target.value))}
-          className="input"
-        />
+        <div className="relative">
+          <input
+            id={`withdraw-amount-${poolAddress}`}
+            type="text"
+            inputMode="decimal"
+            placeholder="0.00"
+            value={amount}
+            onChange={(e) => setAmount(sanitizeDecimalInput(e.target.value))}
+            className="input pr-16"
+          />
+          {hasStake && (
+            <button
+              type="button"
+              onClick={handleMax}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md bg-blacklight-accent-dim px-2 py-1 text-xs font-semibold text-blacklight-accent transition-colors hover:bg-blacklight-accent hover:text-white"
+            >
+              MAX
+            </button>
+          )}
+        </div>
         {hasStake && (
           <p className="mt-1 text-xs text-blacklight-text-muted">
             Processing Stake:{" "}
