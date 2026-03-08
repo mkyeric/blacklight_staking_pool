@@ -62,9 +62,7 @@ export function Header() {
                 </button>
               );
             }
-            const ethPart = account.displayBalance
-              ? `${account.displayBalance} ETH`
-              : null;
+            const ethPart = account.displayBalance ?? null;
             const nilPart = nilFormatted ? `${nilFormatted} NIL` : null;
             const balances = [ethPart, nilPart].filter(Boolean).join(" · ");
             return (
