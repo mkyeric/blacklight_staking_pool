@@ -23,6 +23,7 @@ import {
 } from "@/lib/numberInput";
 import { useBlockTimestamp } from "@/hooks/useBlockTimestamp";
 import { WithdrawModal } from "@/components/WithdrawModal";
+import { UNLOCK_WAIT_DETAIL, UNLOCK_WAIT_LABEL } from "@/lib/unbonding";
 
 type WithdrawalRequestRow = {
   amount: bigint;
@@ -35,7 +36,7 @@ type WithdrawalRequestRow = {
 };
 
 function formatCountdown(unlockTimestamp: number, nowSeconds: number): string {
-  if (unlockTimestamp === 0) return "Queued — after processing, ~8-day unbonding starts";
+  if (unlockTimestamp === 0) return `Queued — after processing, ${UNLOCK_WAIT_LABEL} unlock starts`;
   if (nowSeconds >= unlockTimestamp) return "Claimable";
   const s = unlockTimestamp - nowSeconds;
   const d = Math.floor(s / 86400);
@@ -606,7 +607,7 @@ type UnbondingStakePanelProps = {
 
 /**
  * Shows withdrawal requests that are in the unbonding period and allows users
- * to claim them once ready. Also explains the 5-request limit and ~8-day wait.
+ * to claim them once ready. Also explains the 5-request limit and ~25-hour wait.
  */
 export function UnbondingStakePanel({ poolAddress }: UnbondingStakePanelProps) {
   const { address, isConnected } = useAccount();
@@ -823,8 +824,8 @@ export function UnbondingStakePanel({ poolAddress }: UnbondingStakePanelProps) {
     <section className="card p-6">
       <h2 className="mb-2 text-xl font-semibold">Unbonding Stake</h2>
       <p className="mb-2 text-xs text-blacklight-text-muted">
-        Withdrawal requests that unstake from the node enter an ~8-day unbonding period
-        (7-day unbonding + 1-day processing time). You can have up to{" "}
+        Withdrawal requests that unstake from the node enter a {UNLOCK_WAIT_LABEL} wait
+        ({UNLOCK_WAIT_DETAIL}). You can have up to{" "}
         {MAX_CONCURRENT_WITHDRAWAL_REQUESTS} concurrent requests per pool; current:{" "}
         {pendingCount}/{MAX_CONCURRENT_WITHDRAWAL_REQUESTS}.
       </p>

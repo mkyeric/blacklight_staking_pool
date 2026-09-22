@@ -27,6 +27,7 @@ import { ShutdownOperations } from "@/components/ShutdownOperations";
 import { QuickStakeModal } from "@/components/QuickStakeModal";
 import { OperatorWalletWarning } from "@/components/OperatorWalletWarning";
 import { useIsOperatorWallet } from "@/hooks/useIsOperatorWallet";
+import { UNLOCK_WAIT_DETAIL, UNLOCK_WAIT_SHORT } from "@/lib/unbonding";
 
 // Component to check if a pool is approved for listing (for filtering).
 // Pools tab: only Active phase (poolPhase === 2) with valid operator approval.
@@ -689,7 +690,7 @@ export function PoolListMyPools({
             (NIL that is still sitting in the pool and has not yet been staked to the node);
             this part is sent to your wallet immediately. For any remaining amount that is
             already staked in an <span className="font-semibold">active</span> pool,
-            wait ~8 days (7-day unbonding + 1-day processing time) →
+            wait {UNLOCK_WAIT_SHORT} ({UNLOCK_WAIT_DETAIL}) →
             <span className="font-semibold"> Claim</span> to receive NIL in your wallet.
           </p>
         </div>
@@ -1094,7 +1095,7 @@ function PoolCard({ poolAddress, operatorAddress, isOperatorWallet, id }: PoolCa
                           onMouseLeave={handleHelpMouseLeave}
                         >
                           NIL you requested to withdraw that is being unstaked from the node. A
-                          keeper will process the batch; then there is a 7-day unbonding period
+                          keeper will process the batch; then there is a 1-hour unbonding period
                           plus a 1-day processing time. After that you can claim to your wallet.
                         </span>
                       )}

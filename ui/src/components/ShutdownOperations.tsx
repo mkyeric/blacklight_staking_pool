@@ -10,6 +10,7 @@ import {
 } from "wagmi";
 import { blacklightPoolAbi, POOL_PHASE } from "@/lib/contracts";
 import { useBlockTimestamp } from "@/hooks/useBlockTimestamp";
+import { UNLOCK_WAIT_SHORT } from "@/lib/unbonding";
 
 type ShutdownOperationsProps = {
   poolAddress: `0x${string}`;
@@ -205,7 +206,7 @@ export function ShutdownOperations({ poolAddress }: ShutdownOperationsProps) {
         <ul className="mb-2 list-inside list-disc space-y-0.5 text-xs text-blacklight-text-muted">
           <li>Once confirmed, new deposits are blocked permanently.</li>
           <li>The pool enters &quot;Shutting Down&quot; and cannot be reverted.</li>
-          <li>Stakers can withdraw: processing stake immediately, staked amounts after ~8 days.</li>
+          <li>Stakers can withdraw: processing stake immediately, staked amounts after {UNLOCK_WAIT_SHORT}.</li>
           <li>The 70,000 NIL minimum floor is bypassed — everyone can exit fully.</li>
         </ul>
         <p className="text-xs font-medium text-blacklight-text">
