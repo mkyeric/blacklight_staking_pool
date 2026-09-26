@@ -36,10 +36,31 @@ export default function Home() {
           <h1 className="mb-5 text-3xl font-bold tracking-tight sm:text-4xl">
             Blacklight Pool
           </h1>
-          <p className="mx-auto max-w-2xl text-blacklight-text-muted">
-            Nillion Blacklight requires 70,000 NIL to stake solo. Don’t have that much?
-            Pool your NIL here with others to earn rewards.
-          </p>
+          <div className="mx-auto max-w-2xl space-y-4 text-blacklight-text-muted">
+            <p>
+              Nillion has announced that Blacklight staking is moving from L2 to
+              Ethereum L1. As a result, the current L2 staking setup — and
+              Blacklight Pool — will be wound down. See the{" "}
+              <a
+                href="https://x.com/nillion/status/2103816658083357083?s=20"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blacklight-accent transition-colors hover:text-blacklight-accent-hover"
+              >
+                official announcement
+              </a>
+              .
+            </p>
+            <p>
+              If you currently have NIL staked through Blacklight Pool, please
+              withdraw your funds.
+            </p>
+            <p>
+              Thank you to everyone who trusted and supported Blacklight Pool. It
+              has been a pleasure building this community staking solution and
+              helping smaller NIL holders participate in Blacklight staking.
+            </p>
+          </div>
         </section>
 
         {/* Tabs */}
