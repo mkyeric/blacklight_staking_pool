@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { PoolList, PoolListMyPools } from "@/components/PoolList";
+import { PoolListMyPools } from "@/components/PoolList";
 import { PoolListKeeper } from "@/components/PoolListKeeper";
 import { CreatePoolWizard } from "@/components/CreatePoolWizard";
 import { useKeeperPools } from "@/hooks/useKeeperPools";
@@ -12,7 +12,6 @@ type TabId = "pools" | "mypools" | "keeper" | "create";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabId>("pools");
-  const [scrollToPoolAddress, setScrollToPoolAddress] = useState<string | null>(null);
   const { isKeeper } = useKeeperPools();
   const showCreatePool =
     process.env.NEXT_PUBLIC_SHOW_CREATE_POOL !== "false";
@@ -20,11 +19,6 @@ export default function Home() {
   useEffect(() => {
     if (!showCreatePool && activeTab === "create") setActiveTab("pools");
   }, [showCreatePool, activeTab]);
-
-  const handleStakeSuccess = useCallback((poolAddress: string) => {
-    setActiveTab("mypools");
-    setScrollToPoolAddress(poolAddress);
-  }, []);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -118,14 +112,24 @@ export default function Home() {
         </div>
 
         {/* Tab content */}
-        {activeTab === "pools" && <PoolList onStakeSuccess={handleStakeSuccess} />}
-
-        {activeTab === "mypools" && (
-          <PoolListMyPools
-            scrollToPoolAddress={scrollToPoolAddress}
-            onScrollComplete={() => setScrollToPoolAddress(null)}
-          />
+        {activeTab === "pools" && (
+          <section className="card p-6 text-center">
+            <h2 className="mb-2 text-xl font-semibold">Pools</h2>
+            <p className="mx-auto mb-5 max-w-xl text-sm text-blacklight-text-muted">
+              If you still have NIL remaining in a staking pool, please open My
+              Pools and withdraw your funds now.
+            </p>
+            <button
+              type="button"
+              onClick={() => setActiveTab("mypools")}
+              className="btn-primary"
+            >
+              Go to My Pools
+            </button>
+          </section>
         )}
+
+        {activeTab === "mypools" && <PoolListMyPools />}
 
         {activeTab === "keeper" && <PoolListKeeper />}
 
