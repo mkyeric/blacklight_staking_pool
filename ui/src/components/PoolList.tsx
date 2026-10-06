@@ -57,10 +57,10 @@ function PoolApprovalChecker({
     args: [operatorAddress],
   });
 
-  const { data: isActive } = useReadContract({
+  const { data: operatorStaker } = useReadContract({
     address: STAKING_OPERATORS_ADDRESS,
     abi: stakingOperatorsAbi,
-    functionName: "isActiveOperator",
+    functionName: "operatorStaker",
     args: [operatorAddress],
   });
 
@@ -89,17 +89,23 @@ function PoolApprovalChecker({
   const explicitlyApproved =
     approvedStaker !== undefined &&
     (approvedStaker as string).toLowerCase() === poolAddress.toLowerCase();
-  const operatorApproved =
-    explicitlyApproved ||
-    (isActive === true &&
-      nodeStake !== undefined &&
-      (nodeStake as bigint) > 0n);
+  // approvedStaker is cleared on the first stakeTo; operatorStaker persists.
+  // An inactive node can still hold stake during shutdown.
+  const boundToPool =
+    operatorStaker !== undefined &&
+    (operatorStaker as string).toLowerCase() === poolAddress.toLowerCase();
+  const hasNodeStake =
+    nodeStake !== undefined && (nodeStake as bigint) > 0n;
+  const operatorApproved = explicitlyApproved || boundToPool || hasNodeStake;
 
   // Don't report approval until we have all contract data that affects it.
-  // Otherwise we can report "not approved" while isActive/nodeStake are still
-  // loading, then flip to approved later and only show the pool after tab switch.
+  // Otherwise we can report "not approved" while reads are still loading,
+  // then flip to approved later and only show the pool after tab switch.
   const operatorDataReady =
-    explicitlyApproved || (isActive !== undefined && nodeStake !== undefined);
+    operatorApproved ||
+    (approvedStaker !== undefined &&
+      operatorStaker !== undefined &&
+      nodeStake !== undefined);
   const shutdownDataReady = includeShuttingDown || shutdownStatus !== undefined;
   const isDataLoaded =
     approvedStaker !== undefined &&
@@ -808,6 +814,13 @@ function PoolCard({ poolAddress, operatorAddress, isOperatorWallet, id }: PoolCa
     args: [operatorAddress],
   });
 
+  const { data: operatorStaker } = useReadContract({
+    address: STAKING_OPERATORS_ADDRESS,
+    abi: stakingOperatorsAbi,
+    functionName: "operatorStaker",
+    args: [operatorAddress],
+  });
+
   const { data: isActive } = useReadContract({
     address: STAKING_OPERATORS_ADDRESS,
     abi: stakingOperatorsAbi,
@@ -818,14 +831,18 @@ function PoolCard({ poolAddress, operatorAddress, isOperatorWallet, id }: PoolCa
   const explicitlyApproved =
     approvedStaker !== undefined &&
     (approvedStaker as string).toLowerCase() === poolAddress.toLowerCase();
-  // Fallback: operator active + node has stake means pool forwarded stake, so setup is complete
-  // (approvedStaker can return zero on some StakingOperators implementations after registration)
-  const isPoolApproved =
-    explicitlyApproved ||
-    (isActive === true &&
-      nodeStake !== undefined &&
-      (nodeStake as bigint) > 0n);
-  const isApprovalLoaded = approvedStaker !== undefined;
+  // approvedStaker is cleared on the first stakeTo; operatorStaker persists.
+  // The node can be inactive during shutdown while stake is still there.
+  const boundToPool =
+    operatorStaker !== undefined &&
+    (operatorStaker as string).toLowerCase() === poolAddress.toLowerCase();
+  const hasNodeStake =
+    nodeStake !== undefined && (nodeStake as bigint) > 0n;
+  const isPoolApproved = explicitlyApproved || boundToPool || hasNodeStake;
+  const isApprovalLoaded =
+    approvedStaker !== undefined &&
+    operatorStaker !== undefined &&
+    nodeStake !== undefined;
 
   const { data: operatorInfo } = useReadContract({
     address: STAKING_OPERATORS_ADDRESS,
@@ -930,6 +947,9 @@ function PoolCard({ poolAddress, operatorAddress, isOperatorWallet, id }: PoolCa
           Checking pool status…
         </div>
       ) : !isPoolShuttingDown &&
+        !shutdownPending &&
+        poolPhase !== undefined &&
+        Number(poolPhase) !== POOL_PHASE.Active &&
         nodeStake !== undefined &&
         (nodeStake as bigint) < MIN_NODE_STAKE ? (
         <div className="rounded-xl border border-blacklight-error bg-blacklight-error/20 p-4">
@@ -950,7 +970,7 @@ function PoolCard({ poolAddress, operatorAddress, isOperatorWallet, id }: PoolCa
             Operator: <code className="rounded bg-blacklight-surface px-1 py-0.5 font-mono">{operatorAddress}</code>
           </p>
         </div>
-      ) : !isPoolShuttingDown && !isPoolApproved ? (
+      ) : !isPoolShuttingDown && !shutdownPending && !isPoolApproved ? (
         <div className="rounded-xl border border-blacklight-error bg-blacklight-error/20 p-4">
           <h3 className="mb-2 text-sm font-semibold text-blacklight-error">
             Pool setup incomplete
