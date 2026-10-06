@@ -478,6 +478,12 @@ type PoolListMyPoolsProps = {
   onScrollComplete?: () => void;
 };
 
+function membershipReadsFailed(
+  results: readonly { status: string }[] | undefined
+): boolean {
+  return !!results?.some((result) => result.status === "failure");
+}
+
 /** My Pools tab: shows full PoolCard for pools the connected wallet has joined or has pending withdrawals in. */
 export function PoolListMyPools({
   scrollToPoolAddress,
@@ -524,9 +530,18 @@ export function PoolListMyPools({
     }));
   }, [approvedPools, address]);
 
-  const { data: stakerResults } = useReadContracts({
+  const membershipEnabled =
+    isConnected && !!address && approvedPools.length > 0;
+
+  const {
+    data: stakerResults,
+    isError: stakerReadsFailed,
+    isPending: stakerReadsPending,
+    isFetching: stakerReadsFetching,
+    refetch: refetchStakers,
+  } = useReadContracts({
     contracts: stakerContracts,
-    query: { enabled: isConnected && !!address && approvedPools.length > 0 },
+    query: { enabled: membershipEnabled },
   });
 
   const pendingWithdrawalCountContracts = useMemo(() => {
@@ -539,10 +554,31 @@ export function PoolListMyPools({
     }));
   }, [approvedPools, address]);
 
-  const { data: pendingWithdrawalCountResults } = useReadContracts({
+  const {
+    data: pendingWithdrawalCountResults,
+    isError: pendingReadsFailed,
+    isPending: pendingReadsPending,
+    isFetching: pendingReadsFetching,
+    refetch: refetchPendingWithdrawals,
+  } = useReadContracts({
     contracts: pendingWithdrawalCountContracts,
-    query: { enabled: isConnected && !!address && approvedPools.length > 0 },
+    query: { enabled: membershipEnabled },
   });
+
+  const membershipFailed =
+    stakerReadsFailed ||
+    pendingReadsFailed ||
+    membershipReadsFailed(stakerResults) ||
+    membershipReadsFailed(pendingWithdrawalCountResults);
+  const membershipLoading =
+    membershipEnabled &&
+    !membershipFailed &&
+    (stakerReadsPending ||
+      pendingReadsPending ||
+      !stakerResults ||
+      !pendingWithdrawalCountResults);
+  const membershipReloading =
+    membershipFailed && (stakerReadsFetching || pendingReadsFetching);
 
   const joinedPools = useMemo(() => {
     if (
@@ -643,7 +679,7 @@ export function PoolListMyPools({
     );
   }
 
-  if (joinedPools.length === 0) {
+  if (membershipLoading || membershipFailed || joinedPools.length === 0) {
     return (
       <>
         {pools.map((pool) => (
@@ -657,9 +693,32 @@ export function PoolListMyPools({
         ))}
         <section className="card p-6 text-center">
           <h2 className="mb-2 text-xl font-semibold">My Pools</h2>
-          <p className="text-sm text-blacklight-text-muted">
-            You haven&apos;t joined any pools yet. Use the Pools tab to stake.
-          </p>
+          {membershipLoading ? (
+            <p className="text-sm text-blacklight-text-muted">
+              Loading your pools…
+            </p>
+          ) : membershipFailed ? (
+            <>
+              <p className="mx-auto mb-5 max-w-xl text-sm text-blacklight-text-muted">
+                Could not load your pools. Please try again.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  void refetchStakers();
+                  void refetchPendingWithdrawals();
+                }}
+                disabled={membershipReloading}
+                className="btn-primary"
+              >
+                {membershipReloading ? "Reloading…" : "Reload"}
+              </button>
+            </>
+          ) : (
+            <p className="text-sm text-blacklight-text-muted">
+              You haven&apos;t joined any pools yet. Use the Pools tab to stake.
+            </p>
+          )}
         </section>
       </>
     );
