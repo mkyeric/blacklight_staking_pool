@@ -121,9 +121,11 @@ export function StakeForm({ poolAddress }: StakeFormProps) {
     minStake === undefined ||
     parsedAmount >= minStake;
   const isPoolConfigured = !!poolAddress;
+  // Deposits are closed while Blacklight Pool winds down.
+  const stakingClosed = true;
 
   function handleOpenStakingModal() {
-    if (!isValidAmount || !hasEnoughBalance || !canStake || isPoolShuttingDown || !meetsMinStake || !depositAmountMeetsMin) return;
+    if (stakingClosed || !isValidAmount || !hasEnoughBalance || !canStake || isPoolShuttingDown || !meetsMinStake || !depositAmountMeetsMin) return;
     setStakeErrorMsg(null);
     setStakingModalOpen(true);
   }
@@ -197,11 +199,14 @@ export function StakeForm({ poolAddress }: StakeFormProps) {
             placeholder="0.00"
             value={amount}
             onChange={(e) => setAmount(sanitizeDecimalInput(e.target.value))}
-            className="input pr-16"
+            disabled={stakingClosed}
+            className="input pr-16 disabled:cursor-not-allowed disabled:opacity-50"
           />
           <button
+            type="button"
             onClick={handleMax}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md bg-blacklight-accent-dim px-2 py-1 text-xs font-semibold text-blacklight-accent transition-colors hover:bg-blacklight-accent hover:text-white"
+            disabled={stakingClosed}
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md bg-blacklight-accent-dim px-2 py-1 text-xs font-semibold text-blacklight-accent transition-colors hover:bg-blacklight-accent hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             MAX
           </button>
@@ -246,7 +251,7 @@ export function StakeForm({ poolAddress }: StakeFormProps) {
 
       {/* Single action: open staking popup (approve + stake grouped) */}
       <div className="flex flex-col gap-3">
-        {isValidAmount && hasEnoughBalance && meetsMinStake && depositAmountMeetsMin && canStake && !isPoolShuttingDown && (
+        {!stakingClosed && isValidAmount && hasEnoughBalance && meetsMinStake && depositAmountMeetsMin && canStake && !isPoolShuttingDown && (
           <div className="rounded-xl border border-blacklight-border bg-blacklight-surface/50 p-4">
             <p className="mb-3 text-sm text-blacklight-text-muted">
               {isPoolActive
@@ -262,11 +267,15 @@ export function StakeForm({ poolAddress }: StakeFormProps) {
           </div>
         )}
 
-        {!isValidAmount && (
+        {stakingClosed ? (
+          <p className="text-center text-sm text-blacklight-text-muted">
+            New deposits are closed. Withdraw any NIL you still have in this pool.
+          </p>
+        ) : !isValidAmount ? (
           <p className="text-center text-sm text-blacklight-text-muted">
             Enter an amount to continue.
           </p>
-        )}
+        ) : null}
 
         {stakeErrorMsg && (
           <p className="mt-2 text-xs text-blacklight-error" role="alert">
